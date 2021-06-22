@@ -12,12 +12,16 @@
       editors: [{
         name: "Rouslan Solomakhin",
         company: "Google",
+      }, {
+        name: "Stephen McGruer",
+        company: "Google",
       }],
       github: "w3c/secure-payment-confirmation",
       group: "payments",
       shortName: "secure-payment-confirmation",
       specStatus: "ED",
-      xref: "web-platform",
+      xref: ["WebAuthn", "credential-management-1"],
+      profile: "web-platform",
     };
   </script>
 </head>
@@ -52,20 +56,20 @@
       <h3>Input for Enrollment</h3>
       <p>The following sections describe the input data structures for creating
         a credential for payments.</p>
-      <section data-dfn-for="CredentialCreationOptions">
-        <h4>Monkey Patch for [[webauthn-3]] <dfn>CredentialCreationOptions</dfn>
-          Dictionary</h4>
+      <section>
+        <h4><code>CredentialCreationOptions</code> Dictionary Extension</h4>
+        To support registration via {{CredentialsContainer/create()}},
+        this document extends the {{CredentialCreationOptions}} dictionary as
+        follows:
         <pre class="idl">
-        dictionary CredentialCreationOptions {
+        partial dictionary CredentialCreationOptions {
           PaymentCredentialCreationOptions payment;
         };
         </pre>
-        <p>This specification monkey-patches the [[webauthn-3]] dictionary
-          {{CredentialCreationOptions}} with one additional member:</p>
         <dl>
           <dt><dfn>payment</dfn> member</dt>
-          <dd>The parameters for enrollment of a new {{PublicKeyCredential}} as
-            defined in [[webauthn-3]] for payments.</dd>
+          <dd>The parameters for enrollment of a new {{PublicKeyCredential}}
+              for payments.</dd>
         </dl>
       </section>
       <section data-dfn-for="PaymentCredentialCreationOptions">
@@ -105,9 +109,9 @@
     <section id="enrollment-output">
       <h3>Output of Enrollment</h3>
       <p>If the <code>payment</code> parameter is specified in
-        <code>navigator.credentials.create()</code> and the creation of a
-        [[webauthn-3]] {{PublicKeyCredential}} is successful, then the user
-        agent must output a {{PublicKeyCredential}} with:</p>
+        {{CredentialsContainer/create()}}, and the creation of a
+        {{PublicKeyCredential}} is successful, then the user agent must output
+        a {{PublicKeyCredential}} with:</p>
       <ul>
         <li><code>type</code> set to "<code>payment</code>".</li>
         <li><code>response.clientDataJson.type</code> set to
