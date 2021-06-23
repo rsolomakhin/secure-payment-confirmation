@@ -1,0 +1,257 @@
+<pre class="metadata">
+Title: Secure Payment Confirmation
+Shortname: secure-payment-confirmation
+Repository: w3c/secure-payment-confirmation
+TR: https://www.w3.org/TR/secure-payment-confirmation/
+ED: https://w3c.github.io/secure-payment-confirmation/
+Prepare for TR: true
+Inline Github Issues: true
+Group: web-payments
+Status: w3c/ED
+Level: 1
+URL: https://w3c.github.io/secure-payment-confirmation
+Editor: Rouslan Solomakhin, Google https://www.google.com/, rsolomakhim@chromium.org
+Editor: Stephen McGruer, Google https://www.google.com/, smcgruer@chromium.org
+Abstract: This specification describes data structures, formats, algorithms, and
+  processing models to facilitate [[webauthn-3]] based payments on the Web.
+Complain About: accidental-2119 true, missing-example-ids true
+</pre>
+
+<pre class="anchors">
+</pre>
+
+<div class="non-normative">
+
+<h2 id="introduction">Introduction</h2>
+<em>This section and its sub-sections are non-normative.</em>
+
+<p>This specification defines dictionaries and
+"[=secure-payment-confirmation=]" payment method for use, for instance, with
+[[webauthn-3]] and [[payment-request]]. With it, merchants can request a
+signature over transaction details to be verified by the issuing bank.</p>
+
+<p>This specification describes two flows: enrollment and payment
+authorization.</p>
+<p>This specification relies on the use of the {{PublicKeyCredential}} from
+[[webauthn-3]].</p>
+
+</div> <!-- non-normative -->
+
+<h2 id="enrollment">Enrollment</h2>
+
+<p>To enroll a new payment instrument, relying parties can use
+<code>navigator.credentials.create()</code>, which must display a prompt
+to the user.</p>
+
+<h3 id="enrollment-input">Input for Enrollment</h3>
+
+<p>The following sections describe the input data structures for creating
+a credential for payments.</p>
+
+<h4 id="credentialcreationoptions-extension"><code>CredentialCreationOptions</code> Dictionary Extension</h4>
+
+To support registration via {{CredentialsContainer/create()}},
+this document extends the {{CredentialCreationOptions}} dictionary as
+follows:
+
+<xmp class="idl">
+    partial dictionary CredentialCreationOptions {
+        PaymentCredentialCreationOptions payment;
+    };
+</xmp>
+
+<dl dfn-type="attribute" dfn-for="CredentialCreationOptions">
+    :  payment member
+    :: The parameters for enrollment of a new {{PublicKeyCredential}} for payments.
+</dl>
+
+<h4 id="paymentcredentialcreationoptions-dictionary"><dfn dictionary>PaymentCredentialCreationOptions</dfn> Dictionary</h4>
+
+<xmp class="idl">
+    dictionary PaymentCredentialCreationOptions {
+        required PublicKeyCredentialRpEntity rp;
+        required sequence<PublicKeyCredentialParameters> pubKeyCredParams;
+        required BufferSource challenge;
+        required PaymentCredentialInstrument instrument;
+        unsigned long timeout;
+    };
+</xmp>
+
+<p>The {{PaymentCredentialCreationOptions}} dictionary contains the
+[[webauthn-3]] {{PublicKeyCredentialRpEntity}} and
+{{PublicKeyCredentialParameters}} (as well as the
+<code>challenge</code> and <code>timeout</code> fields) for creating a
+{{PublicKeyCredential}}.</p>
+
+
+<dl dfn-type="attribute" dfn-for="PaymentCredentialCreationOptions">
+    :  rp member
+    :: The information about the relying party, as defined in [[webauthn-3]].
+
+    :  pubKeyCredParams member
+    :: The parameters for creating the {{PublicKeyCredential}} as defined in [[webauthn-3]].
+
+    :  challenge member
+    :: A random one-time challenge that the relying party typically generated on the server side to prevent replay attacks.
+
+    :  instrument member
+    :: The instrument information to display during enrollment.
+
+    :  timeout member
+    :: The number of milliseconds before the request to create the credential times out. At most 1 hour.
+</dl>
+
+<h3 id="enrollment-output">Output of Enrollment</h3>
+
+<p>If the <code>payment</code> parameter is specified in
+{{CredentialsContainer/create()}}, and the creation of a
+{{PublicKeyCredential}} is successful, then the user agent must output
+a {{PublicKeyCredential}} with:</p>
+
+<ul>
+  <li><code>type</code> set to "<code>payment</code>".</li>
+  <li><code>response.clientDataJson.type</code> set to "<code>payment.create</code>".</li>
+</ul>
+
+<h2 id="payment-authorization">Payment Authorization</h2>
+
+<p>To sign over transaction details, create a new {{PaymentRequest}} object
+as described in [[payment-request]] with a single {{PaymentMethodData}},
+   no <code>displayItems</code>, and no <code>options</code>. Set the
+{{PaymentMethodData}}<code>.supportedMethods</code> to
+"<a>secure-payment-confirmation</a>" and set
+{{PaymentMethodData}}<code>.data</code> to
+\{{SecurePaymentConfirmationRequest}}.</p>
+<p>Calling {{PaymentRequest}}<code>.show()</code> must prompt the user to
+confirm the transaction details.</p>
+
+<h3 id="payment-method-identifier">Payment Method Identifier</h3>
+<p>The [[payment-request]] uses a [=payment method identifier=] from
+[[payment-method-id]] to identify a payment flow. The [=standardized
+payment method identifier=] for this specification is
+"<dfn>secure-payment-confirmation</dfn>". </p>
+
+<h3 id="payment-authorization-input">Input for Payment Authorization</h3>
+
+<p>The following section describes the input data structure for signing
+over transaction details.</p>
+
+<h4 id="securepaymentconfirmationrequest-dictionary"><dfn dictionary>SecurePaymentConfirmationRequest</dfn> Dictionary</h4>
+
+<xmp class="idl">
+    dictionary SecurePaymentConfirmationRequest {
+        required BufferSource challenge;
+        required FrozenArray<BufferSource> credentialIds;
+        required PaymentCredentialInstrument instrument; 
+        unsigned long timeout;
+    };
+</xmp>
+
+<p>The {{SecurePaymentConfirmationRequest}} dictionary contains the
+following members:</p>
+
+<dl dfn-type="attribute" dfn-for="SecurePaymentConfirmationRequest">
+    :  challenge member
+    :: A random one-time challenge that the relying party generates on the server side to prevent replay attacks.
+
+    :  credentialIds member
+    :: The list of credential identifiers for the given instrument.
+
+    :  instrument member
+    :: The description of the instrument name and icon to display during enrollment and to be signed along with the transaction details.
+
+    :  timeout member
+    :: The number of milliseconds before the request to sign the transaction details times out. At most 1 hour.
+</dl>
+
+<h3 id="payment-authorization-output">Output of Payment Authorization</h3>
+
+<p>The output of a successful payment authorization is a
+[[payment-request]] {{PaymentResponse}} with:</p>
+
+<ul>
+  <li><code>methodName</code> set to "<a>secure-payment-confirmation</a>".</li>
+  <li><code>details</code> set to the [[webauthn-3]] {{PublicKeyCredential}}.</li>
+  <li><code>details.type</code> set to "<code>payment</code>".</li>
+  <li>{{CollectedClientPaymentData}} in the <code>details.response.clientDataJson</code> field.</li>
+  <li><code>details.response.clientDataJson.type</code> set to "<code>payment.get</code>".</li>
+</ul>
+
+<h4 id="collectedclientpaymentdata-dictionary"><dfn dictionary>CollectedClientPaymentData</dfn> Dictionary</h4>
+
+<xmp class="idl">
+    dictionary CollectedClientPaymentData : CollectedClientData {
+        required CollectedClientAdditionalPaymentData payment;
+    };
+</xmp>
+
+<p>The {{CollectedClientPaymentData}} dictionary inherits from
+{{CollectedClientData}} from [[webauthn-3]] with <code>type</code>
+field always set to "<code>payment.get</code>". It contains the
+following additional field:</p>
+
+<dl dfn-type="attribute" dfn-for="CollectedClientPaymentData">
+    :  payment member
+    :: The additional payment information to sign.
+</dl>
+
+<h4 id="collectedclientadditionalpaymentdata-dictionary"><dfn dictionary>CollectedClientAdditionalPaymentData</dfn> Dictionary</h4>
+
+<xmp class="idl">
+    dictionary CollectedClientAdditionalPaymentData {
+        required USVString rp;
+        required USVString topOrigin;
+        required PaymentCurrencyAmount total;
+        required PaymentCredentialInstrument instrument;
+    };
+</xmp>
+
+<p>The {{CollectedClientAdditionalPaymentData}} dictionary contains the
+following fields:</p>
+
+<dl dfn-type="attribute" dfn-for="CollectedClientAdditionalPaymentData">
+    :  rp member
+    :: The relying party that created the credential.
+
+    :  topOrigin member
+    :: The origin of the top level context that requested to sign the transaction details. Typically this would be called a merchant.
+
+    :  total member
+    :: The {{PaymentCurrencyAmount}} of the [[payment-request]] <code>total</code> field.
+
+    :  instrument member
+    :: The instrument information that was displayed to the user.
+</dl>
+
+<p>Note that there is no <code>paymentRequestOrigin</code> field in
+{{CollectedClientAdditionalPaymentData}}, because the origin of the
+iframe is already included in {{CollectedClientData}} of
+[[webauthn-3]].</p>
+
+<h2 id="common-data-structures">Common Data Structure</h2>
+
+<p>The following data structure is shared between enrollment and payment
+authorization.</p>
+
+<h3 id="paymentcredentialinstrument-dictionary"><dfn dictionary>PaymentCredentialInstrument</dfn> Dictionary</h3>
+
+<xmp class="idl">
+    dictionary PaymentCredentialInstrument {
+        required DOMString displayName;
+        required USVString icon;
+    };
+</xmp>
+
+<p>The {{PaymentCredentialInstrument}} dictionary contains the information
+to be displayed to the user and signed together with the transaction
+details. It contains the following members:</p>
+
+<dl dfn-type="attribute" dfn-for="PaymentCredentialInstrument">
+    :  displayName member
+    :: The name of the payment instrument to be displayed to the user.
+
+    :  icon member
+    :: The URL of the icon of the payment instrument.
+</dl>
+
+</div>
