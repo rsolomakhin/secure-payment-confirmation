@@ -19,6 +19,15 @@ Markup Shorthands: markdown yes
 </pre>
 
 <pre class="anchors">
+spec: credential-management-1; urlPrefix: https://w3c.github.io/webappsec-credential-management/
+    type: dfn
+        text: same-origin with its ancestors; url: same-origin-with-its-ancestors
+
+spec: ECMAScript; urlPrefix: https://tc39.github.io/ecma262/#
+    type: dfn
+        url: sec-object-internal-methods-and-internal-slots
+            text: internal slot
+            text: internal method
 </pre>
 
 <div class="non-normative">
@@ -46,12 +55,49 @@ To enroll a new payment instrument, relying parties can use
 {{CredentialsContainer/create()|navigator.credentials.create()}}, which must
 display a prompt to the user.
 
-## Input for Enrollment ## {#sctn-enrollment-input}
+## <dfn interface>PaymentCredential</dfn> Interface ## {#sctn-paymentcredential-interface}
 
-The following sections describe the input data structures for creating a
-credential for payments.
+<div class="note">
+Note: Preferably we would just use PublicKeyCredential, and have this be
+identical to WebAuth create. That would require us to have a `[[type]]` of
+"public-key" however, as the type has to be the same for all objects of a
+single interface (spec'd in credential-management-1).
+
+Having a separate interface does also make it easier to monkey patch the
+algorithms, as we're technically modifying a *copy* rather than the original
+and so don't have to make the modifications work for vanilla WebAuthn.
+</div>
+
+The {{PaymentCredential}} interface inherits from {{PublicKeyCredential}}
+[[webauthn-3]], to provide a different {{Credential/[[type]]}}, and to
+more easily modify the algorithms to match the requirements of Secure
+Payment Confirmation.
+
+<xmp class="idl">
+    [SecureContext, Exposed=Window]
+    interface PaymentCredential : PublicKeyCredential {
+    };
+</xmp>
+
+<dl dfn-type="attribute" dfn-for="PaymentCredential">
+    :  <dfn>\[[type]]</dfn>
+    :: The {{PaymentCredential}} [=interface object=]'s {{Credential/[[type]]}} [=internal slot=]'s value is the string "`payment`".
+</dl>
+
+{{PaymentCredential}}'s [=interface object=] inherits {{PublicKeyCredential}}'s implementation of
+{{PublicKeyCredential/[[CollectFromCredentialStore]](origin, options,
+sameOriginWithAncestors)}} and {{PublicKeyCredential/[[Store]](credential, sameOriginWithAncestors)}},
+and defines its own implementation of {{PaymentCredential/[[Create]](origin, options,
+sameOriginWithAncestors)}} and \{{PaymentCredential/[[DiscoverFromExternalSource]](origin, options,
+sameOriginWithAncestors)}}.
+</section>
 
 ### `CredentialCreationOptions` Dictionary Extension ### {#sctn-credentialcreationoptions-extension}
+
+Note: We would prefer to reuse PublicKeyCredentialCreationOptions, to keep
+things closer to WebAuthn. However currently Chrome shows a browser UX during
+SPC enrollment that includes payment information - which has to be passed in
+somehow.
 
 To support registration via
 {{CredentialsContainer/create()|navigator.credentials.create()}}, this document
@@ -68,7 +114,83 @@ extends the {{CredentialCreationOptions}} dictionary as follows:
     :: The parameters for enrollment of a new {{PublicKeyCredential}} for payments.
 </dl>
 
-### <dfn dictionary>PaymentCredentialCreationOptions</dfn> Dictionary ### {#sctn-paymentcredentialcreationoptions-dictionary}
+### Create a New Credential - PaymentCredential's `[[Create]](origin, options, sameOriginWithAncestors)` Method ### {#sctn-createCredential}
+
+{{PaymentCredential}}'s [=interface object=]'s implementation of the <dfn
+for="PaymentCredential" method>\[[Create]](origin, options,
+sameOriginWithAncestors)</dfn> [=internal method=] [[!CREDENTIAL-MANAGEMENT-1]]
+allows the creation of [[webauthn-3]] credentials in a payments context. To
+support standard payment flows, {{PaymentCredential}} allows creating a
+credential in a cross-origin iframe.
+
+Note: **TODO:** Link to use-cases
+
+This [=internal method=] accepts three arguments:
+
+<dl dfn-type="argument" dfn-for="PaymentCredential/[[Create]](origin, options, sameOriginWithAncestors)">
+
+    :   <dfn>origin</dfn>
+    ::  This argument is the [=relevant settings object=]'s [=environment settings object/origin=], as determined by the
+        calling {{CredentialsContainer/create()}} implementation.
+
+    :   <dfn>options</dfn>
+    ::  This argument is a {{CredentialCreationOptions}} object whose
+        `\|options|.{{CredentialCreationOptions/payment}}` member contains a {{PaymentCredentialCreationOptions}}
+        object specifying the desired attributes of the to-be-created \[=public key credential=].
+
+    :   <dfn>sameOriginWithAncestors</dfn>
+    ::  This argument is a Boolean value which is `true` if and only if the caller's [=environment settings object=] is
+        [=same-origin with its ancestors=]. It is `false` if caller is cross-origin.
+
+        Note: Invocation of this [=internal method=] indicates that it was allowed by
+        [=permissions policy=], which is evaluated at the [[!CREDENTIAL-MANAGEMENT-1]] level.
+        See [[#sctn-permissions-policy]].
+
+</dl>
+
+Note: This algorithm is currently written quite loosely, whilst we narrow down
+how we want the spec to work.
+
+When this method is invoked, the user agent MUST execute the following algorithm:
+
+1. Optionally, the user agent MAY return a return a {{"NotAllowedError"}} {{DOMException}}.
+
+    Note: This step allows the user agent to implement a browser UX gating enrollment.
+
+1. Let |options| be the value of `|options|.`{{CredentialCreationOptions/payment}}.
+
+1. Create a {{PublicKeyCredentialCreationOptions}} dictionary, |publicKeyOpts|, with:
+
+    1. `user.name` set to `options.instrument.displayName`
+    1. `user.id` set to a random 32-byte buffer
+    1. `user.displayName` set to `options.instrument.displayName`
+    1. `authenticatorSelection.authenticatorAttachment` set to {{AuthenticatorAttachment/platform}}.
+    1. `authenticatorSelection.residentKey` set to {{ResidentKeyRequirement/required}}.
+    1. `authenticatorSelection.userVerification` set to {{UserVerificationRequirement/discouraged}}.
+    1. All other members set to their value from |options|.
+
+1. Create a {{CredentialRequestOptions}} dictionary, |credOpts|, with publicKey set to |publicKeyOpts|.
+
+1. Perform the same steps as {{PublicKeyCredential/[[Create]](origin, options,
+    sameOriginWithAncestors)|PublicKeyCredential.[[Create]]}}, passing in *origin*, |credOpts|, and
+    |sameOriginWithAncestors|, except:
+
+    - Replace step 2 with:
+
+        If |sameOriginWithAncestors| is `false` and the "`payments`" permission
+        policy is not set, return a "{{NotAllowedError}}" {{DOMException}}.
+
+    - In step 13, set the {{CollectedClientData/type}} to "`payment.create`".
+
+    - In the success case, create a {{PaymentCredential}} rather than a
+        {{PublicKeyCredential}}.
+
+1. Store the returned credential in some user-agent specific way.
+
+    Note: It is probably not needed to specify this last step, but it is worth
+    nothing that Chrome currently does this.
+
+## Options for Credential Creation (dictionary <dfn dictionary>PaymentCredentialCreationOptions</dfn>) ## {#dictionary-makecredentialoptions}
 
 <xmp class="idl">
     dictionary PaymentCredentialCreationOptions {
@@ -101,16 +223,6 @@ as the `challenge` and `timeout` fields) for creating a
     :  timeout member
     :: The number of milliseconds before the request to create the credential times out. At most 1 hour.
 </dl>
-
-## Output of Enrollment ## {#sctn-enrollment-output}
-
-If the `payment` parameter is specified in
-{{CredentialsContainer/create()|navigator.credentials.create()}}, and the
-creation of a {{PublicKeyCredential}} is successful, then the user agent must
-output a {{PublicKeyCredential}} with:
-
-- `type` set to "`payment`".
-- `response.clientDataJson.type` set to "`payment.create`".
 
 # Payment Authorization # {#sctn-payment-authorization}
 
@@ -250,5 +362,13 @@ contains the following members:
     :  icon member
     :: The URL of the icon of the payment instrument.
 </dl>
+
+# Permissions Policy integration # {#sctn-permissions-policy}
+
+# Security Considerations # {#sctn-security-considerations}
+
+# Privacy Considerations # {#sctn-privacy-considerations}
+
+# Accessibility Considerations # {#sctn-accessibility-considerations}
 
 </div>
