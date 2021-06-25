@@ -267,7 +267,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
   <div class="head">
    <p data-fill-with="logo"><a class="logo" href="https://www.w3.org/"> <img alt="W3C" height="48" src="https://www.w3.org/StyleSheets/TR/2016/logos/W3C" width="72"> </a> </p>
    <h1 class="p-name no-ref" id="title">Secure Payment Confirmation</h1>
-   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Editor’s Draft, <time class="dt-updated" datetime="2021-06-23">23 June 2021</time></span></h2>
+   <h2 class="no-num no-toc no-ref heading settled" id="profile-and-date"><span class="content">Editor’s Draft, <time class="dt-updated" datetime="2021-06-25">25 June 2021</time></span></h2>
    <div data-fill-with="spec-metadata">
     <dl>
      <dt>This version:
@@ -304,12 +304,12 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <a href="#sctn-enrollment"><span class="secno">2</span> <span class="content">Enrollment</span></a>
      <ol class="toc">
       <li>
-       <a href="#sctn-enrollment-input"><span class="secno">2.1</span> <span class="content">Input for Enrollment</span></a>
+       <a href="#sctn-paymentcredential-interface"><span class="secno">2.1</span> <span class="content"><span><code>PaymentCredential</code></span> Interface</span></a>
        <ol class="toc">
         <li><a href="#sctn-credentialcreationoptions-extension"><span class="secno">2.1.1</span> <span class="content"><code>CredentialCreationOptions</code> Dictionary Extension</span></a>
-        <li><a href="#sctn-paymentcredentialcreationoptions-dictionary"><span class="secno">2.1.2</span> <span class="content"><span><code>PaymentCredentialCreationOptions</code></span> Dictionary</span></a>
+        <li><a href="#sctn-createCredential"><span class="secno">2.1.2</span> <span class="content">Create a New Credential - PaymentCredential’s <code>[[Create]](origin, options, sameOriginWithAncestors)</code> Method</span></a>
        </ol>
-      <li><a href="#sctn-enrollment-output"><span class="secno">2.2</span> <span class="content">Output of Enrollment</span></a>
+      <li><a href="#dictionary-makecredentialoptions"><span class="secno">2.2</span> <span class="content">Options for Credential Creation (dictionary <span><code>PaymentCredentialCreationOptions</code></span>)</span></a>
      </ol>
     <li>
      <a href="#sctn-payment-authorization"><span class="secno">3</span> <span class="content">Payment Authorization</span></a>
@@ -332,6 +332,10 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
      <ol class="toc">
       <li><a href="#sctn-paymentcredentialinstrument-dictionary"><span class="secno">4.1</span> <span class="content"><span><code>PaymentCredentialInstrument</code></span> Dictionary</span></a>
      </ol>
+    <li><a href="#sctn-permissions-policy"><span class="secno">5</span> <span class="content">Permissions Policy integration</span></a>
+    <li><a href="#sctn-security-considerations"><span class="secno">6</span> <span class="content">Security Considerations</span></a>
+    <li><a href="#sctn-privacy-considerations"><span class="secno">7</span> <span class="content">Privacy Considerations</span></a>
+    <li><a href="#sctn-accessibility-considerations"><span class="secno">8</span> <span class="content">Accessibility Considerations</span></a>
     <li>
      <a href="#index"><span class="secno"></span> <span class="content">Index</span></a>
      <ol class="toc">
@@ -361,23 +365,118 @@ authorization.</p>
    <h2 class="heading settled" data-level="2" id="sctn-enrollment"><span class="secno">2. </span><span class="content">Enrollment</span><a class="self-link" href="#sctn-enrollment"></a></h2>
    <p>To enroll a new payment instrument, relying parties can use <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credentialscontainer-create" id="ref-for-dom-credentialscontainer-create">navigator.credentials.create()</a></code>, which must
 display a prompt to the user.</p>
-   <h3 class="heading settled" data-level="2.1" id="sctn-enrollment-input"><span class="secno">2.1. </span><span class="content">Input for Enrollment</span><a class="self-link" href="#sctn-enrollment-input"></a></h3>
-   <p>The following sections describe the input data structures for creating a
-credential for payments.</p>
+   <h3 class="heading settled" data-level="2.1" id="sctn-paymentcredential-interface"><span class="secno">2.1. </span><span class="content"><dfn class="dfn-paneled idl-code" data-dfn-type="interface" data-export id="paymentcredential"><code>PaymentCredential</code></dfn> Interface</span><a class="self-link" href="#sctn-paymentcredential-interface"></a></h3>
+   <div class="note" role="note">
+     Note: Preferably we would just use PublicKeyCredential, and have this be
+identical to WebAuth create. That would require us to have a <code>[[type]]</code> of
+"public-key" however, as the type has to be the same for all objects of a
+single interface (spec’d in credential-management-1). 
+    <p>Having a separate interface does also make it easier to monkey patch the
+algorithms, as we’re technically modifying a <em>copy</em> rather than the original
+and so don’t have to make the modifications work for vanilla WebAuthn.</p>
+   </div>
+   <p>The <code class="idl"><a data-link-type="idl" href="#paymentcredential" id="ref-for-paymentcredential">PaymentCredential</a></code> interface inherits from <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential①">PublicKeyCredential</a></code> <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a>, to provide a different <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credential-type-slot" id="ref-for-dom-credential-type-slot">[[type]]</a></code>, and to
+more easily modify the algorithms to match the requirements of Secure
+Payment Confirmation.</p>
+<pre class="idl highlight def">[<a class="idl-code" data-link-type="extended-attribute" href="https://heycam.github.io/webidl/#SecureContext" id="ref-for-SecureContext"><c- g>SecureContext</c-></a>, <a class="idl-code" data-link-type="extended-attribute" href="https://heycam.github.io/webidl/#Exposed" id="ref-for-Exposed"><c- g>Exposed</c-></a>=<c- n>Window</c->]
+<c- b>interface</c-> <a class="idl-code" data-link-type="interface" href="#paymentcredential" id="ref-for-paymentcredential①"><c- g>PaymentCredential</c-></a> : <a data-link-type="idl-name" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential②"><c- n>PublicKeyCredential</c-></a> {
+};
+</pre>
+   <dl>
+    <dt data-md><dfn class="idl-code" data-dfn-for="PaymentCredential" data-dfn-type="attribute" data-export id="dom-paymentcredential-type-slot"><code>[[type]]</code><a class="self-link" href="#dom-paymentcredential-type-slot"></a></dfn>
+    <dd data-md>
+     <p>The <code class="idl"><a data-link-type="idl" href="#paymentcredential" id="ref-for-paymentcredential②">PaymentCredential</a></code> <a data-link-type="dfn" href="https://heycam.github.io/webidl/#dfn-interface-object" id="ref-for-dfn-interface-object">interface object</a>'s <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credential-type-slot" id="ref-for-dom-credential-type-slot①">[[type]]</a></code> <a data-link-type="dfn" href="https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots" id="ref-for-sec-object-internal-methods-and-internal-slots">internal slot</a>'s value is the string "<code>payment</code>".</p>
+   </dl>
+   <p><code class="idl"><a data-link-type="idl" href="#paymentcredential" id="ref-for-paymentcredential③">PaymentCredential</a></code>'s <a data-link-type="dfn" href="https://heycam.github.io/webidl/#dfn-interface-object" id="ref-for-dfn-interface-object①">interface object</a> inherits <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential③">PublicKeyCredential</a></code>'s implementation of <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-publickeycredential-collectfromcredentialstore-slot" id="ref-for-dom-publickeycredential-collectfromcredentialstore-slot">[[CollectFromCredentialStore]](origin, options,
+sameOriginWithAncestors)</a></code> and <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-publickeycredential-store-slot" id="ref-for-dom-publickeycredential-store-slot">[[Store]](credential, sameOriginWithAncestors)</a></code>,
+and defines its own implementation of <code class="idl"><a data-link-type="idl" href="#dom-paymentcredential-create-slot" id="ref-for-dom-paymentcredential-create-slot">[[Create]](origin, options,
+sameOriginWithAncestors)</a></code> and {{PaymentCredential/[[DiscoverFromExternalSource]](origin, options,
+sameOriginWithAncestors)}}.</p>
    <h4 class="heading settled" data-level="2.1.1" id="sctn-credentialcreationoptions-extension"><span class="secno">2.1.1. </span><span class="content"><code>CredentialCreationOptions</code> Dictionary Extension</span><a class="self-link" href="#sctn-credentialcreationoptions-extension"></a></h4>
+   <p class="note" role="note"><span>Note:</span> We would prefer to reuse PublicKeyCredentialCreationOptions, to keep
+things closer to WebAuthn. However currently Chrome shows a browser UX during
+SPC enrollment that includes payment information - which has to be passed in
+somehow.</p>
    <p>To support registration via <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credentialscontainer-create" id="ref-for-dom-credentialscontainer-create①">navigator.credentials.create()</a></code>, this document
 extends the <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialcreationoptions" id="ref-for-dictdef-credentialcreationoptions">CredentialCreationOptions</a></code> dictionary as follows:</p>
 <pre class="idl highlight def"><c- b>partial</c-> <c- b>dictionary</c-> <a class="idl-code" data-link-type="dictionary" href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialcreationoptions" id="ref-for-dictdef-credentialcreationoptions①"><c- g>CredentialCreationOptions</c-></a> {
-    <a data-link-type="idl-name" href="#dictdef-paymentcredentialcreationoptions" id="ref-for-dictdef-paymentcredentialcreationoptions"><c- n>PaymentCredentialCreationOptions</c-></a> <dfn class="idl-code" data-dfn-for="CredentialCreationOptions" data-dfn-type="dict-member" data-export data-type="PaymentCredentialCreationOptions " id="dom-credentialcreationoptions-payment"><code><c- g>payment</c-></code><a class="self-link" href="#dom-credentialcreationoptions-payment"></a></dfn>;
+    <a data-link-type="idl-name" href="#dictdef-paymentcredentialcreationoptions" id="ref-for-dictdef-paymentcredentialcreationoptions"><c- n>PaymentCredentialCreationOptions</c-></a> <dfn class="dfn-paneled idl-code" data-dfn-for="CredentialCreationOptions" data-dfn-type="dict-member" data-export data-type="PaymentCredentialCreationOptions " id="dom-credentialcreationoptions-payment"><code><c- g>payment</c-></code></dfn>;
 };
 </pre>
    <dl>
     <dt data-md>payment member
     <dd data-md>
-     <p>The parameters for enrollment of a new <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential①">PublicKeyCredential</a></code> for payments.</p>
+     <p>The parameters for enrollment of a new <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential④">PublicKeyCredential</a></code> for payments.</p>
    </dl>
-   <h4 class="heading settled" data-level="2.1.2" id="sctn-paymentcredentialcreationoptions-dictionary"><span class="secno">2.1.2. </span><span class="content"><dfn class="dfn-paneled idl-code" data-dfn-type="dictionary" data-export id="dictdef-paymentcredentialcreationoptions"><code>PaymentCredentialCreationOptions</code></dfn> Dictionary</span><a class="self-link" href="#sctn-paymentcredentialcreationoptions-dictionary"></a></h4>
-<pre class="idl highlight def"><c- b>dictionary</c-> <a class="idl-code" data-link-type="dictionary" href="#dictdef-paymentcredentialcreationoptions" id="ref-for-dictdef-paymentcredentialcreationoptions①"><c- g>PaymentCredentialCreationOptions</c-></a> {
+   <h4 class="heading settled" data-level="2.1.2" id="sctn-createCredential"><span class="secno">2.1.2. </span><span class="content">Create a New Credential - PaymentCredential’s <code>[[Create]](origin, options, sameOriginWithAncestors)</code> Method</span><a class="self-link" href="#sctn-createCredential"></a></h4>
+   <p><code class="idl"><a data-link-type="idl" href="#paymentcredential" id="ref-for-paymentcredential④">PaymentCredential</a></code>'s <a data-link-type="dfn" href="https://heycam.github.io/webidl/#dfn-interface-object" id="ref-for-dfn-interface-object②">interface object</a>'s implementation of the <dfn class="dfn-paneled idl-code" data-dfn-for="PaymentCredential" data-dfn-type="method" data-export data-lt="[[Create]](origin, options, sameOriginWithAncestors)" id="dom-paymentcredential-create-slot"><code>[[Create]](origin, options,
+sameOriginWithAncestors)</code></dfn> <a data-link-type="dfn" href="https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots" id="ref-for-sec-object-internal-methods-and-internal-slots①">internal method</a> <a data-link-type="biblio" href="#biblio-credential-management-1">[CREDENTIAL-MANAGEMENT-1]</a> allows the creation of <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a> credentials in a payments context. To
+support standard payment flows, <code class="idl"><a data-link-type="idl" href="#paymentcredential" id="ref-for-paymentcredential⑤">PaymentCredential</a></code> allows creating a
+credential in a cross-origin iframe.</p>
+   <p class="note" role="note"><span>Note:</span> <strong>TODO:</strong> Link to use-cases</p>
+   <p>This <a data-link-type="dfn" href="https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots" id="ref-for-sec-object-internal-methods-and-internal-slots②">internal method</a> accepts three arguments:</p>
+   <dl>
+    <dt data-md><dfn class="idl-code" data-dfn-for="PaymentCredential/[[Create]](origin, options, sameOriginWithAncestors)" data-dfn-type="argument" data-export id="dom-paymentcredential-create-origin-options-sameoriginwithancestors-origin"><code>origin</code><a class="self-link" href="#dom-paymentcredential-create-origin-options-sameoriginwithancestors-origin"></a></dfn>
+    <dd data-md>
+     <p>This argument is the <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipage/webappapis.html#relevant-settings-object" id="ref-for-relevant-settings-object">relevant settings object</a>'s <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipage/webappapis.html#concept-settings-object-origin" id="ref-for-concept-settings-object-origin">origin</a>, as determined by the
+calling <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credentialscontainer-create" id="ref-for-dom-credentialscontainer-create②">create()</a></code> implementation.</p>
+    <dt data-md><dfn class="idl-code" data-dfn-for="PaymentCredential/[[Create]](origin, options, sameOriginWithAncestors)" data-dfn-type="argument" data-export id="dom-paymentcredential-create-origin-options-sameoriginwithancestors-options"><code>options</code><a class="self-link" href="#dom-paymentcredential-create-origin-options-sameoriginwithancestors-options"></a></dfn>
+    <dd data-md>
+     <p>This argument is a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialcreationoptions" id="ref-for-dictdef-credentialcreationoptions②">CredentialCreationOptions</a></code> object whose <code>\|options|.{{CredentialCreationOptions/payment}}</code> member contains a <code class="idl"><a data-link-type="idl" href="#dictdef-paymentcredentialcreationoptions" id="ref-for-dictdef-paymentcredentialcreationoptions①">PaymentCredentialCreationOptions</a></code> object specifying the desired attributes of the to-be-created [=public key credential=].</p>
+    <dt data-md><dfn class="idl-code" data-dfn-for="PaymentCredential/[[Create]](origin, options, sameOriginWithAncestors)" data-dfn-type="argument" data-export id="dom-paymentcredential-create-origin-options-sameoriginwithancestors-sameoriginwithancestors"><code>sameOriginWithAncestors</code><a class="self-link" href="#dom-paymentcredential-create-origin-options-sameoriginwithancestors-sameoriginwithancestors"></a></dfn>
+    <dd data-md>
+     <p>This argument is a Boolean value which is <code>true</code> if and only if the caller’s <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipage/webappapis.html#environment-settings-object" id="ref-for-environment-settings-object">environment settings object</a> is <a data-link-type="dfn" href="https://w3c.github.io/webappsec-credential-management/#same-origin-with-its-ancestors" id="ref-for-same-origin-with-its-ancestors">same-origin with its ancestors</a>. It is <code>false</code> if caller is cross-origin.</p>
+     <p class="note" role="note"><span>Note:</span> Invocation of this <a data-link-type="dfn" href="https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots" id="ref-for-sec-object-internal-methods-and-internal-slots③">internal method</a> indicates that it was allowed by <a data-link-type="dfn" href="https://html.spec.whatwg.org/multipage/dom.html#concept-document-permissions-policy" id="ref-for-concept-document-permissions-policy">permissions policy</a>, which is evaluated at the <a data-link-type="biblio" href="#biblio-credential-management-1">[CREDENTIAL-MANAGEMENT-1]</a> level.
+See <a href="#sctn-permissions-policy">§ 5 Permissions Policy integration</a>.</p>
+   </dl>
+   <p class="note" role="note"><span>Note:</span> This algorithm is currently written quite loosely, whilst we narrow down
+how we want the spec to work.</p>
+   <p>When this method is invoked, the user agent MUST execute the following algorithm:</p>
+   <ol>
+    <li data-md>
+     <p>Optionally, the user agent MAY return a return a <code class="idl"><a data-link-type="idl" href="https://heycam.github.io/webidl/#notallowederror" id="ref-for-notallowederror">"NotAllowedError"</a></code> <code class="idl"><a data-link-type="idl" href="https://heycam.github.io/webidl/#idl-DOMException" id="ref-for-idl-DOMException">DOMException</a></code>.</p>
+     <p class="note" role="note"><span>Note:</span> This step allows the user agent to implement a browser UX gating enrollment.</p>
+    <li data-md>
+     <p>Let <var>options</var> be the value of <code>|options|.</code><code class="idl"><a data-link-type="idl" href="#dom-credentialcreationoptions-payment" id="ref-for-dom-credentialcreationoptions-payment">payment</a></code>.</p>
+    <li data-md>
+     <p>Create a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialcreationoptions" id="ref-for-dictdef-publickeycredentialcreationoptions">PublicKeyCredentialCreationOptions</a></code> dictionary, <var>publicKeyOpts</var>, with:</p>
+     <ol>
+      <li data-md>
+       <p><code>user.name</code> set to <code>options.instrument.displayName</code></p>
+      <li data-md>
+       <p><code>user.id</code> set to a random 32-byte buffer</p>
+      <li data-md>
+       <p><code>user.displayName</code> set to <code>options.instrument.displayName</code></p>
+      <li data-md>
+       <p><code>authenticatorSelection.authenticatorAttachment</code> set to <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-authenticatorattachment-platform" id="ref-for-dom-authenticatorattachment-platform">platform</a></code>.</p>
+      <li data-md>
+       <p><code>authenticatorSelection.residentKey</code> set to <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-residentkeyrequirement-required" id="ref-for-dom-residentkeyrequirement-required">required</a></code>.</p>
+      <li data-md>
+       <p><code>authenticatorSelection.userVerification</code> set to <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-userverificationrequirement-discouraged" id="ref-for-dom-userverificationrequirement-discouraged">discouraged</a></code>.</p>
+      <li data-md>
+       <p>All other members set to their value from <var>options</var>.</p>
+     </ol>
+    <li data-md>
+     <p>Create a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialrequestoptions" id="ref-for-dictdef-credentialrequestoptions">CredentialRequestOptions</a></code> dictionary, <var>credOpts</var>, with publicKey set to <var>publicKeyOpts</var>.</p>
+    <li data-md>
+     <p>Perform the same steps as <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-publickeycredential-create-slot" id="ref-for-dom-publickeycredential-create-slot">PublicKeyCredential.[[Create]]</a></code>, passing in <em>origin</em>, <var>credOpts</var>, and <var>sameOriginWithAncestors</var>, except:</p>
+     <ul>
+      <li data-md>
+       <p>Replace step 2 with:</p>
+       <p>If <var>sameOriginWithAncestors</var> is <code>false</code> and the "<code>payments</code>" permission
+policy is not set, return a "<code class="idl"><a data-link-type="idl" href="https://heycam.github.io/webidl/#notallowederror" id="ref-for-notallowederror①">NotAllowedError</a></code>" <code class="idl"><a data-link-type="idl" href="https://heycam.github.io/webidl/#idl-DOMException" id="ref-for-idl-DOMException①">DOMException</a></code>.</p>
+      <li data-md>
+       <p>In step 13, set the <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-collectedclientdata-type" id="ref-for-dom-collectedclientdata-type">type</a></code> to "<code>payment.create</code>".</p>
+      <li data-md>
+       <p>In the success case, create a <code class="idl"><a data-link-type="idl" href="#paymentcredential" id="ref-for-paymentcredential⑥">PaymentCredential</a></code> rather than a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential⑤">PublicKeyCredential</a></code>.</p>
+     </ul>
+    <li data-md>
+     <p>Store the returned credential in some user-agent specific way.</p>
+     <p class="note" role="note"><span>Note:</span> It is probably not needed to specify this last step, but it is worth
+nothing that Chrome currently does this.</p>
+   </ol>
+   <h3 class="heading settled" data-level="2.2" id="dictionary-makecredentialoptions"><span class="secno">2.2. </span><span class="content">Options for Credential Creation (dictionary <dfn class="dfn-paneled idl-code" data-dfn-type="dictionary" data-export id="dictdef-paymentcredentialcreationoptions"><code>PaymentCredentialCreationOptions</code></dfn>)</span><a class="self-link" href="#dictionary-makecredentialoptions"></a></h3>
+<pre class="idl highlight def"><c- b>dictionary</c-> <a class="idl-code" data-link-type="dictionary" href="#dictdef-paymentcredentialcreationoptions" id="ref-for-dictdef-paymentcredentialcreationoptions②"><c- g>PaymentCredentialCreationOptions</c-></a> {
     <c- b>required</c-> <a data-link-type="idl-name" href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity" id="ref-for-dictdef-publickeycredentialrpentity"><c- n>PublicKeyCredentialRpEntity</c-></a> <dfn class="idl-code" data-dfn-for="PaymentCredentialCreationOptions" data-dfn-type="dict-member" data-export data-type="PublicKeyCredentialRpEntity " id="dom-paymentcredentialcreationoptions-rp"><code><c- g>rp</c-></code><a class="self-link" href="#dom-paymentcredentialcreationoptions-rp"></a></dfn>;
     <c- b>required</c-> <a data-link-type="dfn" href="https://heycam.github.io/webidl/#idl-sequence" id="ref-for-idl-sequence"><c- b>sequence</c-></a>&lt;<a data-link-type="idl-name" href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialparameters" id="ref-for-dictdef-publickeycredentialparameters"><c- n>PublicKeyCredentialParameters</c-></a>> <dfn class="idl-code" data-dfn-for="PaymentCredentialCreationOptions" data-dfn-type="dict-member" data-export data-type="sequence<PublicKeyCredentialParameters> " id="dom-paymentcredentialcreationoptions-pubkeycredparams"><code><c- g>pubKeyCredParams</c-></code><a class="self-link" href="#dom-paymentcredentialcreationoptions-pubkeycredparams"></a></dfn>;
     <c- b>required</c-> <a data-link-type="idl-name" href="https://heycam.github.io/webidl/#BufferSource" id="ref-for-BufferSource"><c- n>BufferSource</c-></a> <dfn class="idl-code" data-dfn-for="PaymentCredentialCreationOptions" data-dfn-type="dict-member" data-export data-type="BufferSource " id="dom-paymentcredentialcreationoptions-challenge"><code><c- g>challenge</c-></code><a class="self-link" href="#dom-paymentcredentialcreationoptions-challenge"></a></dfn>;
@@ -385,15 +484,15 @@ extends the <code class="idl"><a data-link-type="idl" href="https://w3c.github.i
     <a class="idl-code" data-link-type="interface" href="https://heycam.github.io/webidl/#idl-unsigned-long" id="ref-for-idl-unsigned-long"><c- b>unsigned</c-> <c- b>long</c-></a> <dfn class="idl-code" data-dfn-for="PaymentCredentialCreationOptions" data-dfn-type="dict-member" data-export data-type="unsigned long " id="dom-paymentcredentialcreationoptions-timeout"><code><c- g>timeout</c-></code><a class="self-link" href="#dom-paymentcredentialcreationoptions-timeout"></a></dfn>;
 };
 </pre>
-   <p>The <code class="idl"><a data-link-type="idl" href="#dictdef-paymentcredentialcreationoptions" id="ref-for-dictdef-paymentcredentialcreationoptions②">PaymentCredentialCreationOptions</a></code> dictionary contains the <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a> <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity" id="ref-for-dictdef-publickeycredentialrpentity①">PublicKeyCredentialRpEntity</a></code> and <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialparameters" id="ref-for-dictdef-publickeycredentialparameters①">PublicKeyCredentialParameters</a></code> (as well
-as the <code>challenge</code> and <code>timeout</code> fields) for creating a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential②">PublicKeyCredential</a></code>.</p>
+   <p>The <code class="idl"><a data-link-type="idl" href="#dictdef-paymentcredentialcreationoptions" id="ref-for-dictdef-paymentcredentialcreationoptions③">PaymentCredentialCreationOptions</a></code> dictionary contains the <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a> <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity" id="ref-for-dictdef-publickeycredentialrpentity①">PublicKeyCredentialRpEntity</a></code> and <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialparameters" id="ref-for-dictdef-publickeycredentialparameters①">PublicKeyCredentialParameters</a></code> (as well
+as the <code>challenge</code> and <code>timeout</code> fields) for creating a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential⑥">PublicKeyCredential</a></code>.</p>
    <dl>
     <dt data-md>rp member
     <dd data-md>
      <p>The information about the relying party, as defined in <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a>.</p>
     <dt data-md>pubKeyCredParams member
     <dd data-md>
-     <p>The parameters for creating the <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential③">PublicKeyCredential</a></code> as defined in <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a>.</p>
+     <p>The parameters for creating the <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential⑦">PublicKeyCredential</a></code> as defined in <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a>.</p>
     <dt data-md>challenge member
     <dd data-md>
      <p>A random one-time challenge that the relying party typically generated on the server side to prevent replay attacks.</p>
@@ -404,16 +503,6 @@ as the <code>challenge</code> and <code>timeout</code> fields) for creating a <c
     <dd data-md>
      <p>The number of milliseconds before the request to create the credential times out. At most 1 hour.</p>
    </dl>
-   <h3 class="heading settled" data-level="2.2" id="sctn-enrollment-output"><span class="secno">2.2. </span><span class="content">Output of Enrollment</span><a class="self-link" href="#sctn-enrollment-output"></a></h3>
-   <p>If the <code>payment</code> parameter is specified in <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credentialscontainer-create" id="ref-for-dom-credentialscontainer-create②">navigator.credentials.create()</a></code>, and the
-creation of a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential④">PublicKeyCredential</a></code> is successful, then the user agent must
-output a <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential⑤">PublicKeyCredential</a></code> with:</p>
-   <ul>
-    <li data-md>
-     <p><code>type</code> set to "<code>payment</code>".</p>
-    <li data-md>
-     <p><code>response.clientDataJson.type</code> set to "<code>payment.create</code>".</p>
-   </ul>
    <h2 class="heading settled" data-level="3" id="sctn-payment-authorization"><span class="secno">3. </span><span class="content">Payment Authorization</span><a class="self-link" href="#sctn-payment-authorization"></a></h2>
    <p>To sign over transaction details, create a new <code class="idl"><a data-link-type="idl" href="https://www.w3.org/TR/payment-request/#dom-paymentrequest" id="ref-for-dom-paymentrequest">PaymentRequest</a></code> object as
 described in <a data-link-type="biblio" href="#biblio-payment-request">[payment-request]</a> with a single <code class="idl"><a data-link-type="idl" href="https://www.w3.org/TR/payment-request/#dom-paymentmethoddata" id="ref-for-dom-paymentmethoddata">PaymentMethodData</a></code>, no <code>displayItems</code>, and no <code>options</code>. Set the <code class="idl"><a data-link-type="idl" href="https://www.w3.org/TR/payment-request/#dom-paymentmethoddata-supportedmethods" id="ref-for-dom-paymentmethoddata-supportedmethods">PaymentMethodData.supportedMethods</a></code> to
@@ -457,7 +546,7 @@ members:</p>
     <li data-md>
      <p><code>methodName</code> set to "<a data-link-type="dfn" href="#secure-payment-confirmation" id="ref-for-secure-payment-confirmation②">secure-payment-confirmation</a>".</p>
     <li data-md>
-     <p><code>details</code> set to the <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a> <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential⑥">PublicKeyCredential</a></code>.</p>
+     <p><code>details</code> set to the <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a> <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#publickeycredential" id="ref-for-publickeycredential⑧">PublicKeyCredential</a></code>.</p>
     <li data-md>
      <p><code>details.type</code> set to "<code>payment</code>".</p>
     <li data-md>
@@ -523,6 +612,10 @@ contains the following members:</p>
     <dd data-md>
      <p>The URL of the icon of the payment instrument.</p>
    </dl>
+   <h2 class="heading settled" data-level="5" id="sctn-permissions-policy"><span class="secno">5. </span><span class="content">Permissions Policy integration</span><a class="self-link" href="#sctn-permissions-policy"></a></h2>
+   <h2 class="heading settled" data-level="6" id="sctn-security-considerations"><span class="secno">6. </span><span class="content">Security Considerations</span><a class="self-link" href="#sctn-security-considerations"></a></h2>
+   <h2 class="heading settled" data-level="7" id="sctn-privacy-considerations"><span class="secno">7. </span><span class="content">Privacy Considerations</span><a class="self-link" href="#sctn-privacy-considerations"></a></h2>
+   <h2 class="heading settled" data-level="8" id="sctn-accessibility-considerations"><span class="secno">8. </span><span class="content">Accessibility Considerations</span><a class="self-link" href="#sctn-accessibility-considerations"></a></h2>
    <p id="back-to-top" role="navigation"><a href="#toc"><abbr title="Back to Top">↑</abbr></a></p>
 <script src="https://www.w3.org/scripts/TR/2016/fixup.js"></script>
   </main>
@@ -532,11 +625,12 @@ contains the following members:</p>
    <li>
     challenge
     <ul>
-     <li><a href="#dom-paymentcredentialcreationoptions-challenge">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.1.2</span>
+     <li><a href="#dom-paymentcredentialcreationoptions-challenge">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.2</span>
      <li><a href="#dom-securepaymentconfirmationrequest-challenge">dict-member for SecurePaymentConfirmationRequest</a><span>, in §3.2.1</span>
     </ul>
    <li><a href="#dictdef-collectedclientadditionalpaymentdata">CollectedClientAdditionalPaymentData</a><span>, in §3.3.2</span>
    <li><a href="#dictdef-collectedclientpaymentdata">CollectedClientPaymentData</a><span>, in §3.3.1</span>
+   <li><a href="#dom-paymentcredential-create-slot">[[Create]](origin, options, sameOriginWithAncestors)</a><span>, in §2.1.2</span>
    <li><a href="#dom-securepaymentconfirmationrequest-credentialids">credentialIds</a><span>, in §3.2.1</span>
    <li><a href="#dom-paymentcredentialinstrument-displayname">displayName</a><span>, in §4.1</span>
    <li><a href="#dom-paymentcredentialinstrument-icon">icon</a><span>, in §4.1</span>
@@ -544,7 +638,7 @@ contains the following members:</p>
     instrument
     <ul>
      <li><a href="#dom-collectedclientadditionalpaymentdata-instrument">dict-member for CollectedClientAdditionalPaymentData</a><span>, in §3.3.2</span>
-     <li><a href="#dom-paymentcredentialcreationoptions-instrument">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.1.2</span>
+     <li><a href="#dom-paymentcredentialcreationoptions-instrument">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.2</span>
      <li><a href="#dom-securepaymentconfirmationrequest-instrument">dict-member for SecurePaymentConfirmationRequest</a><span>, in §3.2.1</span>
     </ul>
    <li>
@@ -553,30 +647,45 @@ contains the following members:</p>
      <li><a href="#dom-collectedclientpaymentdata-payment">dict-member for CollectedClientPaymentData</a><span>, in §3.3.1</span>
      <li><a href="#dom-credentialcreationoptions-payment">dict-member for CredentialCreationOptions</a><span>, in §2.1.1</span>
     </ul>
-   <li><a href="#dictdef-paymentcredentialcreationoptions">PaymentCredentialCreationOptions</a><span>, in §2.1.2</span>
+   <li><a href="#paymentcredential">PaymentCredential</a><span>, in §2.1</span>
+   <li><a href="#dictdef-paymentcredentialcreationoptions">PaymentCredentialCreationOptions</a><span>, in §2.2</span>
    <li><a href="#dictdef-paymentcredentialinstrument">PaymentCredentialInstrument</a><span>, in §4.1</span>
-   <li><a href="#dom-paymentcredentialcreationoptions-pubkeycredparams">pubKeyCredParams</a><span>, in §2.1.2</span>
+   <li><a href="#dom-paymentcredentialcreationoptions-pubkeycredparams">pubKeyCredParams</a><span>, in §2.2</span>
    <li>
     rp
     <ul>
      <li><a href="#dom-collectedclientadditionalpaymentdata-rp">dict-member for CollectedClientAdditionalPaymentData</a><span>, in §3.3.2</span>
-     <li><a href="#dom-paymentcredentialcreationoptions-rp">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.1.2</span>
+     <li><a href="#dom-paymentcredentialcreationoptions-rp">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.2</span>
     </ul>
    <li><a href="#secure-payment-confirmation">secure-payment-confirmation</a><span>, in §3.1</span>
    <li><a href="#dictdef-securepaymentconfirmationrequest">SecurePaymentConfirmationRequest</a><span>, in §3.2.1</span>
    <li>
     timeout
     <ul>
-     <li><a href="#dom-paymentcredentialcreationoptions-timeout">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.1.2</span>
+     <li><a href="#dom-paymentcredentialcreationoptions-timeout">dict-member for PaymentCredentialCreationOptions</a><span>, in §2.2</span>
      <li><a href="#dom-securepaymentconfirmationrequest-timeout">dict-member for SecurePaymentConfirmationRequest</a><span>, in §3.2.1</span>
     </ul>
    <li><a href="#dom-collectedclientadditionalpaymentdata-toporigin">topOrigin</a><span>, in §3.3.2</span>
    <li><a href="#dom-collectedclientadditionalpaymentdata-total">total</a><span>, in §3.3.2</span>
+   <li><a href="#dom-paymentcredential-type-slot">[[type]]</a><span>, in §2.1</span>
   </ul>
   <aside class="dfn-panel" data-for="term-for-dictdef-credentialcreationoptions">
    <a href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialcreationoptions">https://w3c.github.io/webappsec-credential-management/#dictdef-credentialcreationoptions</a><b>Referenced in:</b>
    <ul>
     <li><a href="#ref-for-dictdef-credentialcreationoptions">2.1.1. CredentialCreationOptions Dictionary Extension</a> <a href="#ref-for-dictdef-credentialcreationoptions①">(2)</a>
+    <li><a href="#ref-for-dictdef-credentialcreationoptions②">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dictdef-credentialrequestoptions">
+   <a href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialrequestoptions">https://w3c.github.io/webappsec-credential-management/#dictdef-credentialrequestoptions</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dictdef-credentialrequestoptions">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-credential-type-slot">
+   <a href="https://w3c.github.io/webappsec-credential-management/#dom-credential-type-slot">https://w3c.github.io/webappsec-credential-management/#dom-credential-type-slot</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-credential-type-slot">2.1. PaymentCredential Interface</a> <a href="#ref-for-dom-credential-type-slot①">(2)</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-dom-credentialscontainer-create">
@@ -584,7 +693,51 @@ contains the following members:</p>
    <ul>
     <li><a href="#ref-for-dom-credentialscontainer-create">2. Enrollment</a>
     <li><a href="#ref-for-dom-credentialscontainer-create①">2.1.1. CredentialCreationOptions Dictionary Extension</a>
-    <li><a href="#ref-for-dom-credentialscontainer-create②">2.2. Output of Enrollment</a>
+    <li><a href="#ref-for-dom-credentialscontainer-create②">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-same-origin-with-its-ancestors">
+   <a href="https://w3c.github.io/webappsec-credential-management/#same-origin-with-its-ancestors">https://w3c.github.io/webappsec-credential-management/#same-origin-with-its-ancestors</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-same-origin-with-its-ancestors">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-sec-object-internal-methods-and-internal-slots">
+   <a href="https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots">https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-sec-object-internal-methods-and-internal-slots">2.1. PaymentCredential Interface</a>
+    <li><a href="#ref-for-sec-object-internal-methods-and-internal-slots①">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a> <a href="#ref-for-sec-object-internal-methods-and-internal-slots②">(2)</a> <a href="#ref-for-sec-object-internal-methods-and-internal-slots③">(3)</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-sec-object-internal-methods-and-internal-slots">
+   <a href="https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots">https://tc39.github.io/ecma262/#sec-object-internal-methods-and-internal-slots</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-sec-object-internal-methods-and-internal-slots">2.1. PaymentCredential Interface</a>
+    <li><a href="#ref-for-sec-object-internal-methods-and-internal-slots①">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a> <a href="#ref-for-sec-object-internal-methods-and-internal-slots②">(2)</a> <a href="#ref-for-sec-object-internal-methods-and-internal-slots③">(3)</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-environment-settings-object">
+   <a href="https://html.spec.whatwg.org/multipage/webappapis.html#environment-settings-object">https://html.spec.whatwg.org/multipage/webappapis.html#environment-settings-object</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-environment-settings-object">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-concept-settings-object-origin">
+   <a href="https://html.spec.whatwg.org/multipage/webappapis.html#concept-settings-object-origin">https://html.spec.whatwg.org/multipage/webappapis.html#concept-settings-object-origin</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-concept-settings-object-origin">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-concept-document-permissions-policy">
+   <a href="https://html.spec.whatwg.org/multipage/dom.html#concept-document-permissions-policy">https://html.spec.whatwg.org/multipage/dom.html#concept-document-permissions-policy</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-concept-document-permissions-policy">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-relevant-settings-object">
+   <a href="https://html.spec.whatwg.org/multipage/webappapis.html#relevant-settings-object">https://html.spec.whatwg.org/multipage/webappapis.html#relevant-settings-object</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-relevant-settings-object">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-dfn-pmi">
@@ -652,29 +805,84 @@ contains the following members:</p>
    <a href="https://w3c.github.io/webauthn/#publickeycredential">https://w3c.github.io/webauthn/#publickeycredential</a><b>Referenced in:</b>
    <ul>
     <li><a href="#ref-for-publickeycredential">1. Introduction</a>
-    <li><a href="#ref-for-publickeycredential①">2.1.1. CredentialCreationOptions Dictionary Extension</a>
-    <li><a href="#ref-for-publickeycredential②">2.1.2. PaymentCredentialCreationOptions Dictionary</a> <a href="#ref-for-publickeycredential③">(2)</a>
-    <li><a href="#ref-for-publickeycredential④">2.2. Output of Enrollment</a> <a href="#ref-for-publickeycredential⑤">(2)</a>
-    <li><a href="#ref-for-publickeycredential⑥">3.3. Output of Payment Authorization</a>
+    <li><a href="#ref-for-publickeycredential①">2.1. PaymentCredential Interface</a> <a href="#ref-for-publickeycredential②">(2)</a> <a href="#ref-for-publickeycredential③">(3)</a>
+    <li><a href="#ref-for-publickeycredential④">2.1.1. CredentialCreationOptions Dictionary Extension</a>
+    <li><a href="#ref-for-publickeycredential⑤">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+    <li><a href="#ref-for-publickeycredential⑥">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a> <a href="#ref-for-publickeycredential⑦">(2)</a>
+    <li><a href="#ref-for-publickeycredential⑧">3.3. Output of Payment Authorization</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dictdef-publickeycredentialcreationoptions">
+   <a href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialcreationoptions">https://w3c.github.io/webauthn/#dictdef-publickeycredentialcreationoptions</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dictdef-publickeycredentialcreationoptions">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-dictdef-publickeycredentialparameters">
    <a href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialparameters">https://w3c.github.io/webauthn/#dictdef-publickeycredentialparameters</a><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-dictdef-publickeycredentialparameters">2.1.2. PaymentCredentialCreationOptions Dictionary</a> <a href="#ref-for-dictdef-publickeycredentialparameters①">(2)</a>
+    <li><a href="#ref-for-dictdef-publickeycredentialparameters">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a> <a href="#ref-for-dictdef-publickeycredentialparameters①">(2)</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-dictdef-publickeycredentialrpentity">
    <a href="https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity">https://w3c.github.io/webauthn/#dictdef-publickeycredentialrpentity</a><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-dictdef-publickeycredentialrpentity">2.1.2. PaymentCredentialCreationOptions Dictionary</a> <a href="#ref-for-dictdef-publickeycredentialrpentity①">(2)</a>
+    <li><a href="#ref-for-dictdef-publickeycredentialrpentity">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a> <a href="#ref-for-dictdef-publickeycredentialrpentity①">(2)</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-publickeycredential-collectfromcredentialstore-slot">
+   <a href="https://w3c.github.io/webauthn/#dom-publickeycredential-collectfromcredentialstore-slot">https://w3c.github.io/webauthn/#dom-publickeycredential-collectfromcredentialstore-slot</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-publickeycredential-collectfromcredentialstore-slot">2.1. PaymentCredential Interface</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-publickeycredential-create-slot">
+   <a href="https://w3c.github.io/webauthn/#dom-publickeycredential-create-slot">https://w3c.github.io/webauthn/#dom-publickeycredential-create-slot</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-publickeycredential-create-slot">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-publickeycredential-store-slot">
+   <a href="https://w3c.github.io/webauthn/#dom-publickeycredential-store-slot">https://w3c.github.io/webauthn/#dom-publickeycredential-store-slot</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-publickeycredential-store-slot">2.1. PaymentCredential Interface</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-userverificationrequirement-discouraged">
+   <a href="https://w3c.github.io/webauthn/#dom-userverificationrequirement-discouraged">https://w3c.github.io/webauthn/#dom-userverificationrequirement-discouraged</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-userverificationrequirement-discouraged">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-authenticatorattachment-platform">
+   <a href="https://w3c.github.io/webauthn/#dom-authenticatorattachment-platform">https://w3c.github.io/webauthn/#dom-authenticatorattachment-platform</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-authenticatorattachment-platform">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-residentkeyrequirement-required">
+   <a href="https://w3c.github.io/webauthn/#dom-residentkeyrequirement-required">https://w3c.github.io/webauthn/#dom-residentkeyrequirement-required</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-residentkeyrequirement-required">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-dom-collectedclientdata-type">
+   <a href="https://w3c.github.io/webauthn/#dom-collectedclientdata-type">https://w3c.github.io/webauthn/#dom-collectedclientdata-type</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-collectedclientdata-type">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-BufferSource">
    <a href="https://heycam.github.io/webidl/#BufferSource">https://heycam.github.io/webidl/#BufferSource</a><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-BufferSource">2.1.2. PaymentCredentialCreationOptions Dictionary</a>
+    <li><a href="#ref-for-BufferSource">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a>
     <li><a href="#ref-for-BufferSource①">3.2.1. SecurePaymentConfirmationRequest Dictionary</a> <a href="#ref-for-BufferSource②">(2)</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-idl-DOMException">
+   <a href="https://heycam.github.io/webidl/#idl-DOMException">https://heycam.github.io/webidl/#idl-DOMException</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-idl-DOMException">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a> <a href="#ref-for-idl-DOMException①">(2)</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-idl-DOMString">
@@ -683,10 +891,28 @@ contains the following members:</p>
     <li><a href="#ref-for-idl-DOMString">4.1. PaymentCredentialInstrument Dictionary</a>
    </ul>
   </aside>
+  <aside class="dfn-panel" data-for="term-for-Exposed">
+   <a href="https://heycam.github.io/webidl/#Exposed">https://heycam.github.io/webidl/#Exposed</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-Exposed">2.1. PaymentCredential Interface</a>
+   </ul>
+  </aside>
   <aside class="dfn-panel" data-for="term-for-idl-frozen-array">
    <a href="https://heycam.github.io/webidl/#idl-frozen-array">https://heycam.github.io/webidl/#idl-frozen-array</a><b>Referenced in:</b>
    <ul>
     <li><a href="#ref-for-idl-frozen-array">3.2.1. SecurePaymentConfirmationRequest Dictionary</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-notallowederror">
+   <a href="https://heycam.github.io/webidl/#notallowederror">https://heycam.github.io/webidl/#notallowederror</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-notallowederror">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a> <a href="#ref-for-notallowederror①">(2)</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-SecureContext">
+   <a href="https://heycam.github.io/webidl/#SecureContext">https://heycam.github.io/webidl/#SecureContext</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-SecureContext">2.1. PaymentCredential Interface</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-idl-USVString">
@@ -696,26 +922,50 @@ contains the following members:</p>
     <li><a href="#ref-for-idl-USVString②">4.1. PaymentCredentialInstrument Dictionary</a>
    </ul>
   </aside>
+  <aside class="dfn-panel" data-for="term-for-dfn-interface-object">
+   <a href="https://heycam.github.io/webidl/#dfn-interface-object">https://heycam.github.io/webidl/#dfn-interface-object</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dfn-interface-object">2.1. PaymentCredential Interface</a> <a href="#ref-for-dfn-interface-object①">(2)</a>
+    <li><a href="#ref-for-dfn-interface-object②">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
   <aside class="dfn-panel" data-for="term-for-idl-sequence">
    <a href="https://heycam.github.io/webidl/#idl-sequence">https://heycam.github.io/webidl/#idl-sequence</a><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-idl-sequence">2.1.2. PaymentCredentialCreationOptions Dictionary</a>
+    <li><a href="#ref-for-idl-sequence">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-idl-unsigned-long">
    <a href="https://heycam.github.io/webidl/#idl-unsigned-long">https://heycam.github.io/webidl/#idl-unsigned-long</a><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-idl-unsigned-long">2.1.2. PaymentCredentialCreationOptions Dictionary</a>
+    <li><a href="#ref-for-idl-unsigned-long">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a>
     <li><a href="#ref-for-idl-unsigned-long①">3.2.1. SecurePaymentConfirmationRequest Dictionary</a>
    </ul>
   </aside>
   <h3 class="no-num no-ref heading settled" id="index-defined-elsewhere"><span class="content">Terms defined by reference</span><a class="self-link" href="#index-defined-elsewhere"></a></h3>
   <ul class="index">
    <li>
-    <a data-link-type="biblio">[credential-management-1]</a> defines the following terms:
+    <a data-link-type="biblio">[CREDENTIAL-MANAGEMENT-1]</a> defines the following terms:
     <ul>
      <li><span class="dfn-paneled" id="term-for-dictdef-credentialcreationoptions">CredentialCreationOptions</span>
+     <li><span class="dfn-paneled" id="term-for-dictdef-credentialrequestoptions">CredentialRequestOptions</span>
+     <li><span class="dfn-paneled" id="term-for-dom-credential-type-slot">[[type]]</span>
      <li><span class="dfn-paneled" id="term-for-dom-credentialscontainer-create">create()</span>
+     <li><span class="dfn-paneled" id="term-for-same-origin-with-its-ancestors">same-origin with its ancestors</span>
+    </ul>
+   <li>
+    <a data-link-type="biblio">[ECMASCRIPT]</a> defines the following terms:
+    <ul>
+     <li><span class="dfn-paneled" id="term-for-sec-object-internal-methods-and-internal-slots">internal method</span>
+     <li><span class="dfn-paneled" id="term-for-sec-object-internal-methods-and-internal-slots①">internal slot</span>
+    </ul>
+   <li>
+    <a data-link-type="biblio">[HTML]</a> defines the following terms:
+    <ul>
+     <li><span class="dfn-paneled" id="term-for-environment-settings-object">environment settings object</span>
+     <li><span class="dfn-paneled" id="term-for-concept-settings-object-origin">origin</span>
+     <li><span class="dfn-paneled" id="term-for-concept-document-permissions-policy">permissions policy</span>
+     <li><span class="dfn-paneled" id="term-for-relevant-settings-object">relevant settings object</span>
     </ul>
    <li>
     <a data-link-type="biblio">[payment-method-id]</a> defines the following terms:
@@ -739,16 +989,29 @@ contains the following members:</p>
     <ul>
      <li><span class="dfn-paneled" id="term-for-dictdef-collectedclientdata">CollectedClientData</span>
      <li><span class="dfn-paneled" id="term-for-publickeycredential">PublicKeyCredential</span>
+     <li><span class="dfn-paneled" id="term-for-dictdef-publickeycredentialcreationoptions">PublicKeyCredentialCreationOptions</span>
      <li><span class="dfn-paneled" id="term-for-dictdef-publickeycredentialparameters">PublicKeyCredentialParameters</span>
      <li><span class="dfn-paneled" id="term-for-dictdef-publickeycredentialrpentity">PublicKeyCredentialRpEntity</span>
+     <li><span class="dfn-paneled" id="term-for-dom-publickeycredential-collectfromcredentialstore-slot">[[CollectFromCredentialStore]](origin, options, sameOriginWithAncestors)</span>
+     <li><span class="dfn-paneled" id="term-for-dom-publickeycredential-create-slot">[[Create]](origin, options, sameOriginWithAncestors)</span>
+     <li><span class="dfn-paneled" id="term-for-dom-publickeycredential-store-slot">[[Store]](credential, sameOriginWithAncestors)</span>
+     <li><span class="dfn-paneled" id="term-for-dom-userverificationrequirement-discouraged">discouraged</span>
+     <li><span class="dfn-paneled" id="term-for-dom-authenticatorattachment-platform">platform</span>
+     <li><span class="dfn-paneled" id="term-for-dom-residentkeyrequirement-required">required</span>
+     <li><span class="dfn-paneled" id="term-for-dom-collectedclientdata-type">type</span>
     </ul>
    <li>
     <a data-link-type="biblio">[WebIDL]</a> defines the following terms:
     <ul>
      <li><span class="dfn-paneled" id="term-for-BufferSource">BufferSource</span>
+     <li><span class="dfn-paneled" id="term-for-idl-DOMException">DOMException</span>
      <li><span class="dfn-paneled" id="term-for-idl-DOMString">DOMString</span>
+     <li><span class="dfn-paneled" id="term-for-Exposed">Exposed</span>
      <li><span class="dfn-paneled" id="term-for-idl-frozen-array">FrozenArray</span>
+     <li><span class="dfn-paneled" id="term-for-notallowederror">NotAllowedError</span>
+     <li><span class="dfn-paneled" id="term-for-SecureContext">SecureContext</span>
      <li><span class="dfn-paneled" id="term-for-idl-USVString">USVString</span>
+     <li><span class="dfn-paneled" id="term-for-dfn-interface-object">interface object</span>
      <li><span class="dfn-paneled" id="term-for-idl-sequence">sequence</span>
      <li><span class="dfn-paneled" id="term-for-idl-unsigned-long">unsigned long</span>
     </ul>
@@ -758,6 +1021,10 @@ contains the following members:</p>
   <dl>
    <dt id="biblio-credential-management-1">[CREDENTIAL-MANAGEMENT-1]
    <dd>Mike West. <a href="https://www.w3.org/TR/credential-management-1/">Credential Management Level 1</a>. 17 January 2019. WD. URL: <a href="https://www.w3.org/TR/credential-management-1/">https://www.w3.org/TR/credential-management-1/</a>
+   <dt id="biblio-ecmascript">[ECMASCRIPT]
+   <dd><a href="https://tc39.es/ecma262/multipage/">ECMAScript Language Specification</a>. URL: <a href="https://tc39.es/ecma262/multipage/">https://tc39.es/ecma262/multipage/</a>
+   <dt id="biblio-html">[HTML]
+   <dd>Anne van Kesteren; et al. <a href="https://html.spec.whatwg.org/multipage/">HTML Standard</a>. Living Standard. URL: <a href="https://html.spec.whatwg.org/multipage/">https://html.spec.whatwg.org/multipage/</a>
    <dt id="biblio-payment-method-id">[PAYMENT-METHOD-ID]
    <dd>Marcos Caceres; et al. <a href="https://www.w3.org/TR/payment-method-id/">Payment Method Identifiers</a>. 5 September 2019. CR. URL: <a href="https://www.w3.org/TR/payment-method-id/">https://www.w3.org/TR/payment-method-id/</a>
    <dt id="biblio-payment-request">[PAYMENT-REQUEST]
@@ -773,7 +1040,11 @@ contains the following members:</p>
    <dd>Jeff Hodges; et al. <a href="https://www.w3.org/TR/webauthn-3/">Web Authentication: An API for accessing Public Key Credentials - Level 3</a>. 27 April 2021. WD. URL: <a href="https://www.w3.org/TR/webauthn-3/">https://www.w3.org/TR/webauthn-3/</a>
   </dl>
   <h2 class="no-num no-ref heading settled" id="idl-index"><span class="content">IDL Index</span><a class="self-link" href="#idl-index"></a></h2>
-<pre class="idl highlight def"><c- b>partial</c-> <c- b>dictionary</c-> <a class="idl-code" data-link-type="dictionary" href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialcreationoptions"><c- g>CredentialCreationOptions</c-></a> {
+<pre class="idl highlight def">[<a class="idl-code" data-link-type="extended-attribute" href="https://heycam.github.io/webidl/#SecureContext"><c- g>SecureContext</c-></a>, <a class="idl-code" data-link-type="extended-attribute" href="https://heycam.github.io/webidl/#Exposed"><c- g>Exposed</c-></a>=<c- n>Window</c->]
+<c- b>interface</c-> <a class="idl-code" data-link-type="interface" href="#paymentcredential"><c- g>PaymentCredential</c-></a> : <a data-link-type="idl-name" href="https://w3c.github.io/webauthn/#publickeycredential"><c- n>PublicKeyCredential</c-></a> {
+};
+
+<c- b>partial</c-> <c- b>dictionary</c-> <a class="idl-code" data-link-type="dictionary" href="https://w3c.github.io/webappsec-credential-management/#dictdef-credentialcreationoptions"><c- g>CredentialCreationOptions</c-></a> {
     <a data-link-type="idl-name" href="#dictdef-paymentcredentialcreationoptions"><c- n>PaymentCredentialCreationOptions</c-></a> <a data-type="PaymentCredentialCreationOptions " href="#dom-credentialcreationoptions-payment"><code><c- g>payment</c-></code></a>;
 };
 
@@ -809,11 +1080,31 @@ contains the following members:</p>
 };
 
 </pre>
+  <aside class="dfn-panel" data-for="paymentcredential">
+   <b><a href="#paymentcredential">#paymentcredential</a></b><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-paymentcredential">2.1. PaymentCredential Interface</a> <a href="#ref-for-paymentcredential①">(2)</a> <a href="#ref-for-paymentcredential②">(3)</a> <a href="#ref-for-paymentcredential③">(4)</a>
+    <li><a href="#ref-for-paymentcredential④">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a> <a href="#ref-for-paymentcredential⑤">(2)</a> <a href="#ref-for-paymentcredential⑥">(3)</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="dom-credentialcreationoptions-payment">
+   <b><a href="#dom-credentialcreationoptions-payment">#dom-credentialcreationoptions-payment</a></b><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-credentialcreationoptions-payment">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="dom-paymentcredential-create-slot">
+   <b><a href="#dom-paymentcredential-create-slot">#dom-paymentcredential-create-slot</a></b><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-dom-paymentcredential-create-slot">2.1. PaymentCredential Interface</a>
+   </ul>
+  </aside>
   <aside class="dfn-panel" data-for="dictdef-paymentcredentialcreationoptions">
    <b><a href="#dictdef-paymentcredentialcreationoptions">#dictdef-paymentcredentialcreationoptions</a></b><b>Referenced in:</b>
    <ul>
     <li><a href="#ref-for-dictdef-paymentcredentialcreationoptions">2.1.1. CredentialCreationOptions Dictionary Extension</a>
-    <li><a href="#ref-for-dictdef-paymentcredentialcreationoptions①">2.1.2. PaymentCredentialCreationOptions Dictionary</a> <a href="#ref-for-dictdef-paymentcredentialcreationoptions②">(2)</a>
+    <li><a href="#ref-for-dictdef-paymentcredentialcreationoptions①">2.1.2. Create a New Credential - PaymentCredential’s [[Create]](origin, options, sameOriginWithAncestors) Method</a>
+    <li><a href="#ref-for-dictdef-paymentcredentialcreationoptions②">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a> <a href="#ref-for-dictdef-paymentcredentialcreationoptions③">(2)</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="secure-payment-confirmation">
@@ -848,7 +1139,7 @@ contains the following members:</p>
   <aside class="dfn-panel" data-for="dictdef-paymentcredentialinstrument">
    <b><a href="#dictdef-paymentcredentialinstrument">#dictdef-paymentcredentialinstrument</a></b><b>Referenced in:</b>
    <ul>
-    <li><a href="#ref-for-dictdef-paymentcredentialinstrument">2.1.2. PaymentCredentialCreationOptions Dictionary</a>
+    <li><a href="#ref-for-dictdef-paymentcredentialinstrument">2.2. Options for Credential Creation (dictionary PaymentCredentialCreationOptions)</a>
     <li><a href="#ref-for-dictdef-paymentcredentialinstrument①">3.2.1. SecurePaymentConfirmationRequest Dictionary</a>
     <li><a href="#ref-for-dictdef-paymentcredentialinstrument②">3.3.2. CollectedClientAdditionalPaymentData Dictionary</a>
     <li><a href="#ref-for-dictdef-paymentcredentialinstrument③">4.1. PaymentCredentialInstrument Dictionary</a> <a href="#ref-for-dictdef-paymentcredentialinstrument④">(2)</a>
