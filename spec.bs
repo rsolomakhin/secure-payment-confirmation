@@ -14,7 +14,7 @@ Editor: Rouslan Solomakhin, Google https://www.google.com/, rsolomakhim@chromium
 Editor: Stephen McGruer, Google https://www.google.com/, smcgruer@chromium.org
 Abstract: This specification describes data structures, formats, algorithms, and
   processing models to facilitate [[webauthn-3]] based payments on the Web.
-Complain About: accidental-2119 true, missing-example-ids true
+Complain About: missing-example-ids true
 Markup Shorthands: markdown yes 
 </pre>
 
@@ -28,6 +28,19 @@ spec: ECMAScript; urlPrefix: https://tc39.github.io/ecma262/#
         url: sec-object-internal-methods-and-internal-slots
             text: internal slot
             text: internal method
+
+spec: payment-request; urlPrefix: https://w3c.github.io/payment-request/
+    type: dfn
+        text: payment method; url: dfn-payment-method
+        text: steps to check if a payment can be made; url: dfn-steps-to-check-if-a-payment-can-be-made
+        text: steps to respond to a payment request; url: dfn-steps-to-respond-to-a-payment-request
+        text: payment permission string; url: dfn-payment-permission
+
+spec: web-authn; urlPrefix: https://w3c.github.io/webauthn/
+    type: dfn
+        text: authentication ceremony; url: authentication-ceremony
+        text: relying party; url: relying-party
+        text: public key credential; url: public-key-credential
 </pre>
 
 <div class="non-normative">
@@ -36,16 +49,74 @@ spec: ECMAScript; urlPrefix: https://tc39.github.io/ecma262/#
 
 *This section and its sub-sections are non-normative.*
 
-This specification defines dictionaries and "[=secure-payment-confirmation=]"
-payment method for use, for instance, with [[webauthn-3]] and
-[[payment-request]]. With it, merchants can request a signature over
-transaction details to be verified by the issuing bank.
+This specification defines an API that enables the use of strong authentication
+methods such as [[webauthn-3]] in payment flows on the web. It aims to provide
+the same authentication benefits and user privacy focus as [[webauthn-3]],
+whilst relaxing certain constraints to meet the needs of payment processing.
 
-This specification describes two flows: enrollment and payment
-authorization.
+Similarly to [[webauthn-3]], this specification defines two related processes
+involving a user. The first is [[#sctn-enrollment]], where a relationship is
+created between the user and the [=Relying Party=]. The second is
+[[#sctn-payment-authentication]], where a specific payment from the user to a
+recipient (possibly via an intermediary payment service provider) is
+authenticated for the [=Relying Party=]. An important concept in Secure Payment
+Confirmation is that - with the permission of the [=Relying Party=] - the
+merchant or another entity may initiate an authentication ceremony on the
+[=Relying Party's=] behalf, without being on that origin.
 
-This specification relies on the use of the {{PublicKeyCredential}} from
-[[webauthn-3]].
+Functionally, this specification defines a new [=payment method=] for the
+{{PaymentRequest}} API, and builds on [[webauthn-3]] to define payment-specific
+datastructures and to relax assumptions to allow the API to be called in
+payment contexts.
+
+## Use Cases ## {#sctn-use-cases}
+
+The below use case scenarios illustrate the need for a payment-specific
+extension to [[webauthn-3]], rather than just asking web developers to build
+their own flows on-top of [[webauthn-3]] registration and authentication.
+
+Note: These sections are still a WIP.
+
+### Verifying an authenticated payment ### {#sctn-use-case-verifying-payment}
+
+* A default WebAuthn challenge would require all payment-specific information
+    to go in the `challenge` field.
+* There is no specification for this, so banks may do it differently from each
+    other, which then causes confusion.
+* Regulations may require that the user was shown the transaction amount; if
+    the merchant is just using normal webauthn then the bank has no way to
+    verify that. SPC lets them trust the WebAuthn client (the browser) to
+    display this, no matter who the merchant is.
+
+    * Because the transaction info is signed in the CollectedClientData, the
+        bank knows that SPC was used, so the information was shown in browser UX.
+
+### Registration in a bank iframe ### {#sctn-use-case-iframe-registration}
+
+* It is very common in payment flows on the web to open an iframe to a bank for
+    ID&V (e.g. via an SMS OTP step-up flow). This is the highest traffic
+    *authenticated* touchpoint that the bank has with the user, and is an ideal
+    point for an enrollment flow.
+
+    * It is expected that requiring out-of-flow enrollment (e.g. on a bank
+        website, outside of a payment flow), would lead to far lower enrollment
+        rates for SPC.
+
+* See https://github.com/w3c/webauthn/issues/1336#issuecomment-554170183
+
+### Authentication on a merchant website ### {#sctn-use-case-merchant-authentication}
+
+* A prime concern for merchants on the web is to prevent user drop-off during
+    payment authentication. Reducing friction as much as possible is key, so
+    instead of opening a bank iframe (the relying party) and letting them do
+    SPC authentication, merchants strongly want to perform the auth themselves
+    *on behalf of the bank*.
+* This also means the banks don't need to build their own SPC front-end flows
+    for authentication; the merchants (or the payment service processors who
+    they use) can do so.
+* Of course its ultimately up to the relying party to allow this usage, so they
+    don't have to if they don't like it. They could use SPC in a normal
+    challenge flow inside their own iframe if they wanted.
 
 </div> <!-- non-normative -->
 
@@ -53,7 +124,7 @@ This specification relies on the use of the {{PublicKeyCredential}} from
 
 To enroll a new payment instrument, relying parties can use
 {{CredentialsContainer/create()|navigator.credentials.create()}}, which must
-display a prompt to the user.
+display a payments-related prompt to the user.
 
 ## <dfn interface>PaymentCredential</dfn> Interface ## {#sctn-paymentcredential-interface}
 
@@ -88,7 +159,7 @@ Payment Confirmation.
 {{PublicKeyCredential/[[CollectFromCredentialStore]](origin, options,
 sameOriginWithAncestors)}} and {{PublicKeyCredential/[[Store]](credential, sameOriginWithAncestors)}},
 and defines its own implementation of {{PaymentCredential/[[Create]](origin, options,
-sameOriginWithAncestors)}} and \{{PaymentCredential/[[DiscoverFromExternalSource]](origin, options,
+sameOriginWithAncestors)}} and {{PaymentCredential/[[DiscoverFromExternalSource]](origin, options,
 sameOriginWithAncestors)}}.
 </section>
 
@@ -123,8 +194,6 @@ allows the creation of [[webauthn-3]] credentials in a payments context. To
 support standard payment flows, {{PaymentCredential}} allows creating a
 credential in a cross-origin iframe.
 
-Note: **TODO:** Link to use-cases
-
 This [=internal method=] accepts three arguments:
 
 <dl dfn-type="argument" dfn-for="PaymentCredential/[[Create]](origin, options, sameOriginWithAncestors)">
@@ -135,8 +204,8 @@ This [=internal method=] accepts three arguments:
 
     :   <dfn>options</dfn>
     ::  This argument is a {{CredentialCreationOptions}} object whose
-        `\|options|.{{CredentialCreationOptions/payment}}` member contains a {{PaymentCredentialCreationOptions}}
-        object specifying the desired attributes of the to-be-created \[=public key credential=].
+        {{CredentialCreationOptions/payment}} member contains a {{PaymentCredentialCreationOptions}}
+        object specifying the desired attributes of the to-be-created [=public key credential=].
 
     :   <dfn>sameOriginWithAncestors</dfn>
     ::  This argument is a Boolean value which is `true` if and only if the caller's [=environment settings object=] is
@@ -157,7 +226,7 @@ When this method is invoked, the user agent MUST execute the following algorithm
 
     Note: This step allows the user agent to implement a browser UX gating enrollment.
 
-1. Let |options| be the value of `|options|.`{{CredentialCreationOptions/payment}}.
+1. Let |options| be the value of |options|.{{CredentialCreationOptions/payment}}.
 
 1. Create a {{PublicKeyCredentialCreationOptions}} dictionary, |publicKeyOpts|, with:
 
@@ -165,20 +234,20 @@ When this method is invoked, the user agent MUST execute the following algorithm
     1. `user.id` set to a random 32-byte buffer
     1. `user.displayName` set to `options.instrument.displayName`
     1. `authenticatorSelection.authenticatorAttachment` set to {{AuthenticatorAttachment/platform}}.
-    1. `authenticatorSelection.residentKey` set to {{ResidentKeyRequirement/required}}.
-    1. `authenticatorSelection.userVerification` set to {{UserVerificationRequirement/discouraged}}.
+    1. `authenticatorSelection.residentKey` set to {{ResidentKeyRequirement/discouraged}}.
+    1. `authenticatorSelection.userVerification` set to {{UserVerificationRequirement/required}}.
     1. All other members set to their value from |options|.
 
 1. Create a {{CredentialRequestOptions}} dictionary, |credOpts|, with publicKey set to |publicKeyOpts|.
 
 1. Perform the same steps as {{PublicKeyCredential/[[Create]](origin, options,
     sameOriginWithAncestors)|PublicKeyCredential.[[Create]]}}, passing in *origin*, |credOpts|, and
-    |sameOriginWithAncestors|, except:
+    *sameOriginWithAncestors*, except:
 
-    - Replace step 2 with:
+    - Remove step 2.
 
-        If |sameOriginWithAncestors| is `false` and the "`payments`" permission
-        policy is not set, return a "{{NotAllowedError}}" {{DOMException}}.
+        Note: This allows for creating SPC credentials in a cross-origin
+        iframe, as long as the correct permission policy is set.
 
     - In step 13, set the {{CollectedClientData/type}} to "`payment.create`".
 
@@ -224,30 +293,34 @@ as the `challenge` and `timeout` fields) for creating a
     :: The number of milliseconds before the request to create the credential times out. At most 1 hour.
 </dl>
 
-# Payment Authorization # {#sctn-payment-authorization}
+# Payment Authentication # {#sctn-payment-authentication}
 
-To sign over transaction details, create a new {{PaymentRequest}} object as
-described in [[payment-request]] with a single {{PaymentMethodData}}, no
-`displayItems`, and no `options`. Set the
-{{PaymentMethodData/supportedMethods|PaymentMethodData.supportedMethods}} to
-"[=secure-payment-confirmation=]" and set
-{{PaymentMethodData/data|PaymentMethodData.data}} to
-{{SecurePaymentConfirmationRequest}}.
+To authenticate a payment via Secure Payment Confirmation, this specification
+defines a new [=payment method=], "[=secure-payment-confirmation=]". This
+payment method confirms the transaction with the user and then performs an
+[=authentication ceremony=] to authenticate the user and create a signed blob
+representing the transaction.
 
-Calling {{PaymentRequest/show()|PaymentRequest.show()}} must prompt the user to
-confirm the transaction details.
+At a high level, authentication for Secure Payment Confirmation is similar to
+[[webauthn-3]], with one major conceptual shift. Secure Payment Confirmation
+allows a third-party (e.g. the merchant) to trigger an authentication ceremony
+on behalf of the [=Relying Party=], passing in credentials that it has obtained
+from the Relying Party on some other unspecified channel. See
+[[#sctn-use-case-merchant-authentication]].
 
-## Payment Method Identifier ## {#sctn-payment-method-identifier}
+## Payment Method: Secure Payment Confirmation ## {#sctn-payment-method-spc}
 
-The [[payment-request]] uses a [=payment method identifier=] from
-[[payment-method-id]] to identify a payment flow. The [=standardized payment
-method identifier=] for this specification is
+<div class="note">
+**TODO**: This specification also needs to monkey-patch step 12 of
+{{PaymentRequest/constructor|PaymentRequest's constructor}} somehow, to enforce
+that when "[=secure-payment-confirmation=]" is used, exactly one method is
+given.
+</div>
+
+### Payment Method Identifier ### {#sctn-payment-method-identifier}
+
+The [=standardized payment method identifier=] for this specification is
 "<dfn>secure-payment-confirmation</dfn>".
-
-## Input for Payment Authorization ## {#sctn-payment-authorization-input}
-
-The following section describes the input data structure for signing over
-transaction details.
 
 ### <dfn dictionary>SecurePaymentConfirmationRequest</dfn> Dictionary ### {#sctn-securepaymentconfirmationrequest-dictionary}
 
@@ -277,16 +350,153 @@ members:
     :: The number of milliseconds before the request to sign the transaction details times out. At most 1 hour.
 </dl>
 
-## Output of Payment Authorization ## {#sctn-payment-authorization-output}
+### Steps to check if a payment can be made ### {#sctn-steps-to-check-if-a-payment-can-be-made}
 
-The output of a successful payment authorization is a [[payment-request]]
-{{PaymentResponse}} with:
+The [=steps to check if a payment can be made=] for this payment method, for an
+input {{SecurePaymentConfirmationRequest}} `request`, are:
 
-- `methodName` set to "[=secure-payment-confirmation=]".
-- `details` set to the [[webauthn-3]] {{PublicKeyCredential}}.
-- `details.type` set to "`payment`".
-- {{CollectedClientPaymentData}} in the `details.response.clientDataJson` field.
-- `details.response.clientDataJson.type` set to "`payment.get`".
+1. If `request.credentialIds` is empty, return `false`.
+
+1. If `request.instrument.displayName` is empty, return `false`.
+
+1. Download the image specified in `request.instrument.icon`. If this fails, return `false`.
+
+    Note: Performing this step here mitigates a privacy leak. **TODO**:
+    Document + link-to privacy section.
+
+1. Optionally, the user agent may elect to return `false`.
+
+    Note: This covers the current Chrome behavior of checking whether the
+    passed credentials match those on the system, and early-exit if so. This
+    is a potential privacy concern, and may be removed.
+
+1. Return `true`.
+
+### Displaying a transaction confirmation UX ### {#sctn-transaction-confirmation-ux}
+
+<div class="note">
+**TODO**: We need to determine how best this can be specified. We tend to avoid
+requiring user agents to show specific UX, but in the case of SPC we do want to
+ensure that the appropriate transaction details are communicated to the user
+(either via browser UX or via the authenticator device itself, if it has an
+output).
+</div>
+
+### Steps to respond to a payment request ### {#sctn-steps-to-respond-to-a-payment-request}
+
+The [=steps to respond to a payment request=] for this payment method, for an
+input {{SecurePaymentConfirmationRequest}} `request`, are:
+
+1. Create a {{PublicKeyCredentialRequestOptions}}, |publicKeyOpts|, with:
+
+    1. `challenge` set to `request.challenge`.
+    1. `timeout` set to `request.timeout`.
+    1. `userVerification` set to {{UserVerificationRequirement/required}}.
+    1. `rpId` set to **TODO**.
+
+        Note: What to set the `rpId` to is a difficult question. If left unset,
+        it will be set to the current frame's origin, I believe, which is
+        likely wrong for the WebAuthn algorithm.
+
+1. For each |id| in `request.credentialIds`:
+
+    1. Create a {{PublicKeyCredentialDescriptor}}, |descriptor|, with:
+
+        1. `type` set to {{PublicKeyCredentialType/public-key}}
+
+            Note: Is this right? Should it be "payment"?
+
+        1. `id` set to |id|
+        1. `transports` set to a sequence of length 1 whose only member is
+            {{AuthenticatorTransport/internal}}.
+
+    1. Push |descriptor| onto `publicKeyOpts.allowCredentials`.
+
+1. Let |outputCredential| be the result of [[#sctn-getAssertion]], passing |publicKeyOpts| for *options*.
+
+1. Return |outputCredential|.
+
+## Use an Existing Credential to Make an Assertion - PaymentCredential's `[[Get]](options)` Method ## {#sctn-getAssertion}
+
+Authentication for Secure Payment Confirmation operates similarly to
+[[webauthn-3]], in that some input is gathered and then signed via an
+authenticator device which verifies the user.
+
+When handling a `[[Get]](options)` call for a {{PaymentCredential}}, the user
+agent MUST:
+
+1. If not in a [=secure-payment-confirmation=] payment handler, error and quit.
+
+    Note: This allows us to enforce that the user agent shows the
+    transaction-confirmation UX for each use of SPC.
+
+1. Perform the same steps as [[webauthn-3#sctn-getAssertion]], except:
+
+    * Call {{PaymentCredential}}'s `[[CollectFromCredentialStore]]()` and
+        `[[DiscoverFromExternalSource]]()` methods rather than
+        {{PublicKeyCredential}}'s.
+
+Note: as with PublicKeyCredential, PaymentCredential's \[[CollectFromCredentialStore]]() just returns an empty set.
+
+### PaymentCredential's <code><dfn for="PaymentCredential" method>\[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)</dfn></code> Method ### {#sctn-discover-from-external-source}
+
+This [=internal method=] accepts three arguments:
+
+<dl dfn-type="argument" dfn-for="PaymentCredential/[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)">
+
+    :   <dfn>origin</dfn>
+    ::  This argument is the [=relevant settings object=]'s [=environment settings object/origin=], as determined by the
+        calling {{CredentialsContainer/get()}} implementation, i.e., {{CredentialsContainer}}'s <a abstract-op>Request a `Credential`</a> abstract operation.
+
+    :   <dfn>options</dfn>
+    ::  This argument is a {{CredentialRequestOptions}} object whose
+        <code>|options|.{{CredentialRequestOptions/publicKey}}</code> member contains a {{PublicKeyCredentialRequestOptions}}
+        object specifying the desired attributes of the [=public key credential=] to discover.
+
+    :   <dfn>sameOriginWithAncestors</dfn>
+    ::  This argument is a Boolean value which is `true` if and only if the caller's [=environment settings object=] is
+        [=same-origin with its ancestors=]. It is `false` if caller is cross-origin.
+
+        Note: Invocation of this [=internal method=] indicates that it was allowed by
+        [=permissions policy=], which is evaluated at the [[!CREDENTIAL-MANAGEMENT-1]] level.
+        See [[#sctn-permissions-policy]].
+</dl>
+
+Note: This algorithm is currently written quite loosely, whilst we narrow down
+how we want the spec to work.
+
+When this method is invoked, the user agent MUST execute the following algorithm:
+
+1. Perform the same steps as {{PublicKeyCredential/[[DiscoverFromExternalSource]](origin, options,
+    sameOriginWithAncestors)|PublicKeyCredential.[[DiscoverFromExternalSource]]}}, passing in *origin*, *options*, and
+    *sameOriginWithAncestors*, except:
+
+    * Remove step 6.1
+
+        Note: This step checks that we are on the same domain as `rpId`, which isn't required for SPC.
+
+    * In step 9, let `collectedClientData` instead be a new {{CollectedClientPaymentData}}, with:
+
+        1. `type` set to "`payment.get"`
+        1. `payment` set to a new {{CollectedClientAdditionalPaymentData}} with:
+
+            1. `rp` set to the relying party that created the credential.
+            1. `topOrigin` set to the origin of the top level context that requested to sign the transaction details.
+            1. `total` set to the {{PaymentCurrencyAmount}} of the [payment-request] total.
+
+                Note: Yikes, we don't have this information here! We lost it calling `Get()`.
+
+            1. `instrument` set to the {{PaymentCredentialInstrument}} of the {{SecurePaymentConfirmationRequest}}.
+
+                Note: Yikes, we don't have this information here! We lost it calling `Get()`.
+
+        1. All other members set as per the original step 9.
+
+    * During step 17, in the "If any authenticator indicates success," case, sub-step 3.1:
+
+        1. Create a new {{PaymentCredential}} rather than {{PublicKeyCredential}}.
+
+            Note: Needed to get a {{PaymentCredential/[[type]]}} of "payment" rather than "public-key".
 
 ### <dfn dictionary>CollectedClientPaymentData</dfn> Dictionary ### {#sctn-collectedclientpaymentdata-dictionary}
 
@@ -297,8 +507,7 @@ The output of a successful payment authorization is a [[payment-request]]
 </xmp>
 
 The {{CollectedClientPaymentData}} dictionary inherits from
-{{CollectedClientData}} from [[webauthn-3]] with `type` field always set to
-"`payment.get`". It contains the following additional field:
+{{CollectedClientData}}. It contains the following additional field:
 
 <dl dfn-type="attribute" dfn-for="CollectedClientPaymentData">
     :  payment member
@@ -340,7 +549,7 @@ already included in {{CollectedClientData}} of [[webauthn-3]].
 # Common Data Structure # {#sctn-common-data-structures}
 
 The following data structure is shared between enrollment and payment
-authorization.
+authentication.
 
 ## <dfn dictionary>PaymentCredentialInstrument</dfn> Dictionary ## {#sctn-paymentcredentialinstrument-dictionary}
 
@@ -365,10 +574,80 @@ contains the following members:
 
 # Permissions Policy integration # {#sctn-permissions-policy}
 
+This specification uses the "[=payment permission string|payment=]"
+policy-identifier string from [[payment-request]] to control access to both
+enrollment and authentication.
+
 # Security Considerations # {#sctn-security-considerations}
+
+Note: This section is still very much a draft.
+
+Main considerations (on top of WebAuthn itself):
+
+* A successful payment backed by Secure Payment Confirmation will always
+    require two things: the user to provide consent and the Relying Party
+    to accept the signed cryptogram. As such, even if a malicious party obtains
+    the credential list from the Relying Party, it is unlikely for fraud to
+    occur:
+
+    * First, the user must provide their consent (and verification) to the
+        website - with either browser and/or authenticator UX that shows the
+        transaction details.
+
+    * Assuming the user does consent and verify the transaction, the
+        Relying Party must still be expecting the payment, otherwise the
+        cryptogram is useless.
+
+* The same argument is used against the concern that a third party (the
+    merchant) provides many of the input values for SPC authentication
+    (e.g. the card icon, name, etc). Whilst this may be confusing to the
+    user if the merchant is malicious, the cryptogram is ultimately useless
+    unless the Relying Party accepts it - and they are able to
+    cryptographically verify what was shown to the user.
+
+* Allowing \[[Create]] in an iframe; see https://github.com/w3c/webauthn/issues/1336
+    from WebAuthn.
+
+    * Currently this is mostly amerliorated by the fact that we show a
+        payments-focused browser UX on SPC enrollment.
+
+    * If we got rid of that UX (under consideration), then we could require a
+        user gesture for calling it. This would be fine for the bank iframe
+        enrollment case.
 
 # Privacy Considerations # {#sctn-privacy-considerations}
 
+Note: This section is still very much a draft.
+
+SPC primarily points to WebAuthn for its privacy model, but it does relax
+that model in significant ways that should be considered.
+
+* Probing for credential ids
+
+    * Currently SPC exits immediately (on Chrome) when no passed credential
+        matches the current device. This could be used to probe for whether the
+        current device matches an existing known credential. This does show a
+        very clear payments UX when a match is found (though that may be too late).
+
+        Note: The instant-exit may be removed in the future.
+
+* Identifying user across different payment instruments.
+
+     * If the relying party uses the same credentials for a given user across
+         multiple payment instruments, this could expose that linkage to the
+         merchant (as they could track what sets of credentials they see for
+         each credit card they ask about on the backend).
+
+* Credential ID(s) as a tracking vector
+
+     * The credential ID could be used as a tracking vector, but to obtain it
+         from the Relying Party the merchant already needs an as-strong
+         identifier to give to the Relying Party (e.g. the credit card number).
+
 # Accessibility Considerations # {#sctn-accessibility-considerations}
+
+User Agents implementing this specification should follow both
+[[webauthn-3#accessibility-considerations|WebAuthn's Accessibility Considerations]]
+and \[[payment-request#accessibility-considerations|PaymentRequest's Accessibility Considerations]].
 
 </div>
