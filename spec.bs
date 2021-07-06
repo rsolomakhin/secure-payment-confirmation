@@ -41,6 +41,9 @@ spec: web-authn; urlPrefix: https://w3c.github.io/webauthn/
         text: authentication ceremony; url: authentication-ceremony
         text: relying party; url: relying-party
         text: public key credential; url: public-key-credential
+        text: WebAuthn Extension; url: webauthn-extensions
+        text: registration extension; url: registration-extension
+        text: authentication extension; url: authentication-extension
 </pre>
 
 <div class="non-normative">
@@ -50,9 +53,9 @@ spec: web-authn; urlPrefix: https://w3c.github.io/webauthn/
 *This section and its sub-sections are non-normative.*
 
 This specification defines an API that enables the use of strong authentication
-methods such as [[webauthn-3]] in payment flows on the web. It aims to provide
-the same authentication benefits and user privacy focus as [[webauthn-3]],
-whilst relaxing certain constraints to meet the needs of payment processing.
+methods in payment flows on the web. It aims to provide the same authentication
+benefits and user privacy focus as [[webauthn-3]], whilst relaxing certain
+constraints to meet the needs of payment processing.
 
 Similarly to [[webauthn-3]], this specification defines two related processes
 involving a user. The first is [[#sctn-enrollment]], where a relationship is
@@ -60,14 +63,14 @@ created between the user and the [=Relying Party=]. The second is
 [[#sctn-payment-authentication]], where a specific payment from the user to a
 recipient (possibly via an intermediary payment service provider) is
 authenticated for the [=Relying Party=]. An important concept in Secure Payment
-Confirmation is that - with the permission of the [=Relying Party=] - the
+Confirmation is that with the permission of the [=Relying Party=], the
 merchant or another entity may initiate an authentication ceremony on the
-[=Relying Party's=] behalf, without being on that origin.
+[=Relying Party's=] behalf.
 
 Functionally, this specification defines a new [=payment method=] for the
-{{PaymentRequest}} API, and builds on [[webauthn-3]] to define payment-specific
-datastructures and to relax assumptions to allow the API to be called in
-payment contexts.
+{{PaymentRequest}} API, and adds a [=WebAuthn Extension=] to extend
+[[webauthn-3]] with payment-specific datastructures and to relax assumptions to
+allow the API to be called in payment contexts.
 
 ## Use Cases ## {#sctn-use-cases}
 
@@ -118,180 +121,111 @@ Note: These sections are still a WIP.
     don't have to if they don't like it. They could use SPC in a normal
     challenge flow inside their own iframe if they wanted.
 
+## Sample API Usage Scenarios ## {#sctn-sample-scenarios}
+
+TODO
+
 </div> <!-- non-normative -->
+
+# Dependencies # {#sctn-dependencies}
+
+This specification relies on several other underlying specifications, listed
+below and in [[#index-defined-elsewhere]].
+
+: WebAuthn Conditional UI
+:: Secure Payment Confirmation only shows the transaction UX if one of the
+    passed credentials is valid for the current device, without requiring a user
+    interaction. This concept is not currently part of [[webauthn-3]], but is on
+    the roadmap for a future enhancement.
+
+    Until this is available, user agents can consider either storing a local
+    cache of WebAuthn credentials created for this device, or always showing the
+    transaction UX even if the user may be unable to complete the
+    authentication.
+
+    <div class="note">TODO: Bikeshed the name.</div>
 
 # Enrollment # {#sctn-enrollment}
 
-To enroll a new payment instrument, relying parties can use
-{{CredentialsContainer/create()|navigator.credentials.create()}}, which must
-display a payments-related prompt to the user.
+To enroll a user for Secure Payment Confirmation, relying parties can use
+{{CredentialsContainer/create()|navigator.credentials.create()}}, with a
+{{AuthenticationExtensionsClientInputs/payment}} [=WebAuthn Extension=].
 
-## <dfn interface>PaymentCredential</dfn> Interface ## {#sctn-paymentcredential-interface}
+## Payment Extension - Enrollment ## {#sctn-payment-extension-enrollment}
 
-<div class="note">
-Note: Preferably we would just use PublicKeyCredential, and have this be
-identical to WebAuth create. That would require us to have a `[[type]]` of
-"public-key" however, as the type has to be the same for all objects of a
-single interface (spec'd in credential-management-1).
+:  Extension identifier
+:: `payment`
 
-Having a separate interface does also make it easier to monkey patch the
-algorithms, as we're technically modifying a *copy* rather than the original
-and so don't have to make the modifications work for vanilla WebAuthn.
-</div>
+:  Operation applicability
+:: [=registration extension|Registration=] and [=authentication extension|authentication=]
 
-The {{PaymentCredential}} interface inherits from {{PublicKeyCredential}}
-[[webauthn-3]], to provide a different {{Credential/[[type]]}}, and to
-more easily modify the algorithms to match the requirements of Secure
-Payment Confirmation.
-
-<xmp class="idl">
-    [SecureContext, Exposed=Window]
-    interface PaymentCredential : PublicKeyCredential {
+:  Client extension input
+:: <xmp class="idl">
+    partial dictionary AuthenticationExtensionsClientInputs {
+      AuthenticationExtensionsPaymentInputs payment;
     };
-</xmp>
+    
+    dictionary AuthenticationExtensionsPaymentInputs {
+      boolean isPayment;
 
-<dl dfn-type="attribute" dfn-for="PaymentCredential">
-    :  <dfn>\[[type]]</dfn>
-    :: The {{PaymentCredential}} [=interface object=]'s {{Credential/[[type]]}} [=internal slot=]'s value is the string "`payment`".
-</dl>
-
-{{PaymentCredential}}'s [=interface object=] inherits {{PublicKeyCredential}}'s implementation of
-{{PublicKeyCredential/[[CollectFromCredentialStore]](origin, options,
-sameOriginWithAncestors)}} and {{PublicKeyCredential/[[Store]](credential, sameOriginWithAncestors)}},
-and defines its own implementation of {{PaymentCredential/[[Create]](origin, options,
-sameOriginWithAncestors)}} and {{PaymentCredential/[[DiscoverFromExternalSource]](origin, options,
-sameOriginWithAncestors)}}.
-</section>
-
-### `CredentialCreationOptions` Dictionary Extension ### {#sctn-credentialcreationoptions-extension}
-
-Note: We would prefer to reuse PublicKeyCredentialCreationOptions, to keep
-things closer to WebAuthn. However currently Chrome shows a browser UX during
-SPC enrollment that includes payment information - which has to be passed in
-somehow.
-
-To support registration via
-{{CredentialsContainer/create()|navigator.credentials.create()}}, this document
-extends the {{CredentialCreationOptions}} dictionary as follows:
-
-<xmp class="idl">
-    partial dictionary CredentialCreationOptions {
-        PaymentCredentialCreationOptions payment;
+      // Only used for authentication.
+      USVString rpOrigin;
+      USVString topOrigin;
+      PaymentCurrencyAmount total;
+      PaymentCredentialInstrument instrument;
     };
-</xmp>
+    </xmp>
+    
+    <dl dfn-type="dict-member" dfn-for="AuthenticationExtensionsPaymentInputs">
+      :  <dfn>isPayment</dfn> member
+      :: Indicates that the extension is active.
+    
+        <div class="note">**TODO**: Find a better way to do this. Needed currently because `displayName` and `icon` are auth-time only.</div>
+    
+      :  <dfn>rpOrigin</dfn> member
+      :: The [=Relying Party=] origin of the credential(s) being used. Only valid at authentication time.
 
-<dl dfn-type="attribute" dfn-for="CredentialCreationOptions">
-    :  payment member
-    :: The parameters for enrollment of a new {{PublicKeyCredential}} for payments.
-</dl>
+      :  <dfn>topOrigin</dfn> member
+      :: The origin of the top-level frame. Only valid at authentication time.
 
-### Create a New Credential - PaymentCredential's `[[Create]](origin, options, sameOriginWithAncestors)` Method ### {#sctn-createCredential}
+      :  <dfn>total</dfn> member
+      :: The total amount the user is paying to the payee. Only valid at authentication time.
 
-{{PaymentCredential}}'s [=interface object=]'s implementation of the <dfn
-for="PaymentCredential" method>\[[Create]](origin, options,
-sameOriginWithAncestors)</dfn> [=internal method=] [[!CREDENTIAL-MANAGEMENT-1]]
-allows the creation of [[webauthn-3]] credentials in a payments context. To
-support standard payment flows, {{PaymentCredential}} allows creating a
-credential in a cross-origin iframe.
+      :  <dfn>instrument</dfn> member
+      :: The instrument details to be displayed to the user. Only valid at authentication time.
+      
+    </dl>
 
-This [=internal method=] accepts three arguments:
+:  Client extension processing ([=registration extension|registration=])
+:: Note: Reading [[webauthn-3]] literally, these steps don't work; extensions
+    are injected at step 12 of `[[Create]]` and cannot really modify anything.
+    However other extensions seem to ignore that entirely and assume they can
+    just modify any part of any WebAuthn algorithm!
 
-<dl dfn-type="argument" dfn-for="PaymentCredential/[[Create]](origin, options, sameOriginWithAncestors)">
+    When [[webauthn-3#sctn-createCredential|creating a new credential]]:
 
-    :   <dfn>origin</dfn>
-    ::  This argument is the [=relevant settings object=]'s [=environment settings object/origin=], as determined by the
-        calling {{CredentialsContainer/create()}} implementation.
+    1. Remove the check for *sameOriginWithAncestors* in step 2.
+    
+       Note: This allows for creating SPC credentials in a cross-origin
+       iframe, as long as the correct permission policy is set
+       (see [[#sctn-permissions-policy]]). We could additionally require and
+       consume a [=transient activation=] here, if we felt the permission policy
+       is not sufficient.
 
-    :   <dfn>options</dfn>
-    ::  This argument is a {{CredentialCreationOptions}} object whose
-        {{CredentialCreationOptions/payment}} member contains a {{PaymentCredentialCreationOptions}}
-        object specifying the desired attributes of the to-be-created [=public key credential=].
+    2. In step 13, set the {{CollectedClientData/type}} to "`payment.create`".
 
-    :   <dfn>sameOriginWithAncestors</dfn>
-    ::  This argument is a Boolean value which is `true` if and only if the caller's [=environment settings object=] is
-        [=same-origin with its ancestors=]. It is `false` if caller is cross-origin.
+        <div class="note">**TODO**: Can we and/or should we rely on `getClientExtensionResults()` instead?</div>
 
-        Note: Invocation of this [=internal method=] indicates that it was allowed by
-        [=permissions policy=], which is evaluated at the [[!CREDENTIAL-MANAGEMENT-1]] level.
-        See [[#sctn-permissions-policy]].
+:  Client extension processing ([=authentication extension|authentication=])
+:: See [[#sctn-payment-extension-authentication]].
 
-</dl>
+    <div class="note">**TODO**: Reorder this spec to have this all inline.</div>
 
-Note: This algorithm is currently written quite loosely, whilst we narrow down
-how we want the spec to work.
+:  Client extension output
+:: None
 
-When this method is invoked, the user agent MUST execute the following algorithm:
-
-1. Optionally, the user agent MAY return a return a {{"NotAllowedError"}} {{DOMException}}.
-
-    Note: This step allows the user agent to implement a browser UX gating enrollment.
-
-1. Let |options| be the value of |options|.{{CredentialCreationOptions/payment}}.
-
-1. Create a {{PublicKeyCredentialCreationOptions}} dictionary, |publicKeyOpts|, with:
-
-    1. `user.name` set to `options.instrument.displayName`
-    1. `user.id` set to a random 32-byte buffer
-    1. `user.displayName` set to `options.instrument.displayName`
-    1. `authenticatorSelection.authenticatorAttachment` set to {{AuthenticatorAttachment/platform}}.
-    1. `authenticatorSelection.residentKey` set to {{ResidentKeyRequirement/discouraged}}.
-    1. `authenticatorSelection.userVerification` set to {{UserVerificationRequirement/required}}.
-    1. All other members set to their value from |options|.
-
-1. Create a {{CredentialRequestOptions}} dictionary, |credOpts|, with publicKey set to |publicKeyOpts|.
-
-1. Perform the same steps as {{PublicKeyCredential/[[Create]](origin, options,
-    sameOriginWithAncestors)|PublicKeyCredential.[[Create]]}}, passing in *origin*, |credOpts|, and
-    *sameOriginWithAncestors*, except:
-
-    - Remove step 2.
-
-        Note: This allows for creating SPC credentials in a cross-origin
-        iframe, as long as the correct permission policy is set.
-
-    - In step 13, set the {{CollectedClientData/type}} to "`payment.create`".
-
-    - In the success case, create a {{PaymentCredential}} rather than a
-        {{PublicKeyCredential}}.
-
-1. Store the returned credential in some user-agent specific way.
-
-    Note: It is probably not needed to specify this last step, but it is worth
-    nothing that Chrome currently does this.
-
-## Options for Credential Creation (dictionary <dfn dictionary>PaymentCredentialCreationOptions</dfn>) ## {#dictionary-makecredentialoptions}
-
-<xmp class="idl">
-    dictionary PaymentCredentialCreationOptions {
-        required PublicKeyCredentialRpEntity rp;
-        required sequence<PublicKeyCredentialParameters> pubKeyCredParams;
-        required BufferSource challenge;
-        required PaymentCredentialInstrument instrument;
-        unsigned long timeout;
-    };
-</xmp>
-
-The {{PaymentCredentialCreationOptions}} dictionary contains the [[webauthn-3]]
-{{PublicKeyCredentialRpEntity}} and {{PublicKeyCredentialParameters}} (as well
-as the `challenge` and `timeout` fields) for creating a
-{{PublicKeyCredential}}.
-
-<dl dfn-type="attribute" dfn-for="PaymentCredentialCreationOptions">
-    :  rp member
-    :: The information about the relying party, as defined in [[webauthn-3]].
-
-    :  pubKeyCredParams member
-    :: The parameters for creating the {{PublicKeyCredential}} as defined in [[webauthn-3]].
-
-    :  challenge member
-    :: A random one-time challenge that the relying party typically generated on the server side to prevent replay attacks.
-
-    :  instrument member
-    :: The instrument information to display during enrollment.
-
-    :  timeout member
-    :: The number of milliseconds before the request to create the credential times out. At most 1 hour.
-</dl>
+:  Authenticator extension processing
+:: None
 
 # Payment Authentication # {#sctn-payment-authentication}
 
@@ -387,122 +321,77 @@ output).
 The [=steps to respond to a payment request=] for this payment method, for an
 input {{SecurePaymentConfirmationRequest}} `request`, are:
 
-1. Create a {{PublicKeyCredentialRequestOptions}}, |publicKeyOpts|, with:
+1. Create a {{AuthenticationExtensionsPaymentInputs}} dictionary, |payment|, with:
+
+    1. `isPayment` set to `true`.
+    1. `rpOrigin` set to **TODO**.
+
+        <div class="note">**TODO**: We don't have the rp origin here; maybe this should just go in the processing steps.</div>
+
+    1. `topOrigin` set to the origin of the top-level frame.
+
+        <div class="note">**TODO**: This is part of the PaymentRequestEvent, but it's unclear how to access that in an inbuilt PaymentHandler.</div>
+
+    1. `total` set to the `total` from the PaymentRequest.
+
+        <div class="note">**TODO**: This is part of the PaymentRequestEvent, but it's unclear how to access that in an inbuilt PaymentHandler.</div>
+
+    1. `instrument` set to `request.instrument`.
+
+1. Create a {{PublicKeyCredentialRequestOptions}}, `publicKeyOpts`, with:
 
     1. `challenge` set to `request.challenge`.
     1. `timeout` set to `request.timeout`.
     1. `userVerification` set to {{UserVerificationRequirement/required}}.
-    1. `rpId` set to **TODO**.
-
-        Note: What to set the `rpId` to is a difficult question. If left unset,
-        it will be set to the current frame's origin, I believe, which is
-        likely wrong for the WebAuthn algorithm.
+    1. `extensions` set to a {{AuthenticationExtensionsClientInputs}} dictionary
+        whose {{AuthenticationExtensionsClientInputs/payment}} member is set to |payment|.
 
 1. For each |id| in `request.credentialIds`:
 
     1. Create a {{PublicKeyCredentialDescriptor}}, |descriptor|, with:
 
         1. `type` set to {{PublicKeyCredentialType/public-key}}
-
-            Note: Is this right? Should it be "payment"?
-
         1. `id` set to |id|
         1. `transports` set to a sequence of length 1 whose only member is
             {{AuthenticatorTransport/internal}}.
 
     1. Push |descriptor| onto `publicKeyOpts.allowCredentials`.
 
-1. Let |outputCredential| be the result of [[#sctn-getAssertion]], passing |publicKeyOpts| for *options*.
+1. Let |outputCredential| be the result of calling <code><a idl for="CredentialsContainer" lt="get()">navigator.credentials.get({publicKey})</a></code>.
+
+    NOTE: This triggers [[webauthn-3]]'s [[webauthn-3#sctn-getAssertion|Get]] behavior
 
 1. Return |outputCredential|.
 
-## Use an Existing Credential to Make an Assertion - PaymentCredential's `[[Get]](options)` Method ## {#sctn-getAssertion}
+## Payment Extension - Authentication ## {#sctn-payment-extension-authentication}
 
-Authentication for Secure Payment Confirmation operates similarly to
-[[webauthn-3]], in that some input is gathered and then signed via an
-authenticator device which verifies the user.
+This section defines the client extension processing steps for the
+[[#sctn-payment-extension-enrollment| payment extension]], for authentication.
 
-When handling a `[[Get]](options)` call for a {{PaymentCredential}}, the user
-agent MUST:
+When [[webauthn-3#sctn-getAssertion|making an assertion]]:
 
-1. If not in a [=secure-payment-confirmation=] payment handler, error and quit.
+1. If not in a "[=secure-payment-confirmation=]" payment handler, return a "{{NotAllowedError}}" {{DOMException}}.
 
-    Note: This allows us to enforce that the user agent shows the
-    transaction-confirmation UX for each use of SPC.
+    NOTE: This guards against websites trying to access the extended powers of
+    SPC without going through the browser UX.
 
-1. Perform the same steps as [[webauthn-3#sctn-getAssertion]], except:
+1. During {{PublicKeyCredential/[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)}}:
 
-    * Call {{PaymentCredential}}'s `[[CollectFromCredentialStore]]()` and
-        `[[DiscoverFromExternalSource]]()` methods rather than
-        {{PublicKeyCredential}}'s.
+    1. Skip step 6.1, which compares *options.rpId* to *effectiveDomain*
 
-Note: as with PublicKeyCredential, PaymentCredential's \[[CollectFromCredentialStore]]() just returns an empty set.
+        Note: This enables cross-domain authentication ceremonies; see [[#sctn-use-case-merchant-authentication]].
 
-### PaymentCredential's <code><dfn for="PaymentCredential" method>\[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)</dfn></code> Method ### {#sctn-discover-from-external-source}
-
-This [=internal method=] accepts three arguments:
-
-<dl dfn-type="argument" dfn-for="PaymentCredential/[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)">
-
-    :   <dfn>origin</dfn>
-    ::  This argument is the [=relevant settings object=]'s [=environment settings object/origin=], as determined by the
-        calling {{CredentialsContainer/get()}} implementation, i.e., {{CredentialsContainer}}'s <a abstract-op>Request a `Credential`</a> abstract operation.
-
-    :   <dfn>options</dfn>
-    ::  This argument is a {{CredentialRequestOptions}} object whose
-        <code>|options|.{{CredentialRequestOptions/publicKey}}</code> member contains a {{PublicKeyCredentialRequestOptions}}
-        object specifying the desired attributes of the [=public key credential=] to discover.
-
-    :   <dfn>sameOriginWithAncestors</dfn>
-    ::  This argument is a Boolean value which is `true` if and only if the caller's [=environment settings object=] is
-        [=same-origin with its ancestors=]. It is `false` if caller is cross-origin.
-
-        Note: Invocation of this [=internal method=] indicates that it was allowed by
-        [=permissions policy=], which is evaluated at the [[!CREDENTIAL-MANAGEMENT-1]] level.
-        See [[#sctn-permissions-policy]].
-</dl>
-
-Note: This algorithm is currently written quite loosely, whilst we narrow down
-how we want the spec to work.
-
-<div class="note">
-**TODO**: Make sure however we spec this, we don't preclude a future extension
-to the spec to push the transaction details down into the authenticator (to
-support authenticators that have outputs for the user).
-</div>
-
-When this method is invoked, the user agent MUST execute the following algorithm:
-
-1. Perform the same steps as {{PublicKeyCredential/[[DiscoverFromExternalSource]](origin, options,
-    sameOriginWithAncestors)|PublicKeyCredential.[[DiscoverFromExternalSource]]}}, passing in *origin*, *options*, and
-    *sameOriginWithAncestors*, except:
-
-    * Remove step 6.1
-
-        Note: This step checks that we are on the same domain as `rpId`, which isn't required for SPC.
-
-    * In step 9, let `collectedClientData` instead be a new {{CollectedClientPaymentData}}, with:
+    1. In step 9, instead of creating a {{CollectedClientData}}, instead create a {{CollectedClientPaymentData}} with:
 
         1. `type` set to "`payment.get"`
         1. `payment` set to a new {{CollectedClientAdditionalPaymentData}} with:
 
-            1. `rp` set to the relying party that created the credential.
-            1. `topOrigin` set to the origin of the top level context that requested to sign the transaction details.
-            1. `total` set to the {{PaymentCurrencyAmount}} of the [payment-request] total.
-
-                Note: Yikes, we don't have this information here! We lost it calling `Get()`.
-
-            1. `instrument` set to the {{PaymentCredentialInstrument}} of the {{SecurePaymentConfirmationRequest}}.
-
-                Note: Yikes, we don't have this information here! We lost it calling `Get()`.
+            1. `rpOrigin` set to {{AuthenticationExtensionsPaymentInputs/rpOrigin}}.
+            1. `topOrigin` set to {{AuthenticationExtensionsPaymentInputs/topOrigin}}.
+            1. `total` set to {{AuthenticationExtensionsPaymentInputs/total}}.
+            1. `instrument` set {{AuthenticationExtensionsPaymentInputs/instrument}}.
 
         1. All other members set as per the original step 9.
-
-    * During step 17, in the "If any authenticator indicates success," case, sub-step 3.1:
-
-        1. Create a new {{PaymentCredential}} rather than {{PublicKeyCredential}}.
-
-            Note: Needed to get a {{PaymentCredential/[[type]]}} of "payment" rather than "public-key".
 
 ### <dfn dictionary>CollectedClientPaymentData</dfn> Dictionary ### {#sctn-collectedclientpaymentdata-dictionary}
 
