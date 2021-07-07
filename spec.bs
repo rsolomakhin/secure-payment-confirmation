@@ -15,7 +15,7 @@ Editor: Stephen McGruer, Google https://www.google.com/, smcgruer@chromium.org
 Abstract: This specification describes data structures, formats, algorithms, and
   processing models to facilitate [[webauthn-3]] based payments on the Web.
 Complain About: missing-example-ids true
-Markup Shorthands: markdown yes 
+Markup Shorthands: markdown yes
 </pre>
 
 <pre class="anchors">
@@ -164,7 +164,7 @@ To enroll a user for Secure Payment Confirmation, relying parties can use
     partial dictionary AuthenticationExtensionsClientInputs {
       AuthenticationExtensionsPaymentInputs payment;
     };
-    
+
     dictionary AuthenticationExtensionsPaymentInputs {
       boolean isPayment;
 
@@ -175,13 +175,13 @@ To enroll a user for Secure Payment Confirmation, relying parties can use
       PaymentCredentialInstrument instrument;
     };
     </xmp>
-    
+
     <dl dfn-type="dict-member" dfn-for="AuthenticationExtensionsPaymentInputs">
       :  <dfn>isPayment</dfn> member
       :: Indicates that the extension is active.
-    
+
         <div class="note">**TODO**: Find a better way to do this. Needed currently because `displayName` and `icon` are auth-time only.</div>
-    
+
       :  <dfn>rpOrigin</dfn> member
       :: The [=Relying Party=] origin of the credential(s) being used. Only valid at authentication time.
 
@@ -193,7 +193,7 @@ To enroll a user for Secure Payment Confirmation, relying parties can use
 
       :  <dfn>instrument</dfn> member
       :: The instrument details to be displayed to the user. Only valid at authentication time.
-      
+
     </dl>
 
 :  Client extension processing ([=registration extension|registration=])
@@ -205,7 +205,7 @@ To enroll a user for Secure Payment Confirmation, relying parties can use
     When [[webauthn-3#sctn-createCredential|creating a new credential]]:
 
     1. Remove the check for *sameOriginWithAncestors* in step 2.
-    
+
        Note: This allows for creating SPC credentials in a cross-origin
        iframe, as long as the correct permission policy is set
        (see [[#sctn-permissions-policy]]). We could additionally require and
@@ -262,8 +262,9 @@ The [=standardized payment method identifier=] for this specification is
     dictionary SecurePaymentConfirmationRequest {
         required BufferSource challenge;
         required FrozenArray<BufferSource> credentialIds;
-        required PaymentCredentialInstrument instrument; 
+        required PaymentCredentialInstrument instrument;
         unsigned long timeout;
+        AuthenticationExtensionsClientInputs extensions;
     };
 </xmp>
 
@@ -282,6 +283,9 @@ members:
 
     :  timeout member
     :: The number of milliseconds before the request to sign the transaction details times out. At most 1 hour.
+
+    :  extensions member
+    :: Any [=WebAuthn extensions=] that should be used for the passed credential(s). The caller does not need to specify the [[#sctn-payment-extension-enrollment| payment extension]]; it is added automatically.
 </dl>
 
 ### Steps to check if a payment can be made ### {#sctn-steps-to-check-if-a-payment-can-be-made}
@@ -344,7 +348,8 @@ input {{SecurePaymentConfirmationRequest}} `request`, are:
     1. `timeout` set to `request.timeout`.
     1. `userVerification` set to {{UserVerificationRequirement/required}}.
     1. `extensions` set to a {{AuthenticationExtensionsClientInputs}} dictionary
-        whose {{AuthenticationExtensionsClientInputs/payment}} member is set to |payment|.
+        whose {{AuthenticationExtensionsClientInputs/payment}} member is set to |payment|,
+        and whose other members are set from `request.extensions`.
 
 1. For each |id| in `request.credentialIds`:
 
