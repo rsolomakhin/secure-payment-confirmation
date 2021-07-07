@@ -42,6 +42,7 @@ spec: web-authn; urlPrefix: https://w3c.github.io/webauthn/
         text: relying party; url: relying-party
         text: public key credential; url: public-key-credential
         text: WebAuthn Extension; url: webauthn-extensions
+        text: client extension; url: client-extension
         text: registration extension; url: registration-extension
         text: authentication extension; url: authentication-extension
 </pre>
@@ -60,7 +61,7 @@ constraints to meet the needs of payment processing.
 Similarly to [[webauthn-3]], this specification defines two related processes
 involving a user. The first is [[#sctn-enrollment]], where a relationship is
 created between the user and the [=Relying Party=]. The second is
-[[#sctn-payment-authentication]], where a specific payment from the user to a
+[[#sctn-authentication]], where a specific payment from the user to a
 recipient (possibly via an intermediary payment service provider) is
 authenticated for the [=Relying Party=]. An important concept in Secure Payment
 Confirmation is that with the permission of the [=Relying Party=], the
@@ -110,9 +111,9 @@ Note: These sections are still a WIP.
 ### Authentication on a merchant website ### {#sctn-use-case-merchant-authentication}
 
 * A prime concern for merchants on the web is to prevent user drop-off during
-    payment authentication. Reducing friction as much as possible is key, so
-    instead of opening a bank iframe (the relying party) and letting them do
-    SPC authentication, merchants strongly want to perform the auth themselves
+    authentication. Reducing friction as much as possible is key, so instead of
+    opening a bank iframe (the relying party) and letting them do SPC
+    authentication, merchants strongly want to perform the auth themselves
     *on behalf of the bank*.
 * This also means the banks don't need to build their own SPC front-end flows
     for authentication; the merchants (or the payment service processors who
@@ -305,7 +306,7 @@ try {
 This specification relies on several other underlying specifications, listed
 below and in [[#index-defined-elsewhere]].
 
-: WebAuthn Conditional UI
+: <dfn>WebAuthn Conditional UI</dfn>
 :: Secure Payment Confirmation only shows the transaction UX if one of the
     passed credentials is valid for the current device, without requiring a user
     interaction. This concept is not currently part of [[webauthn-3]], but is on
@@ -320,87 +321,17 @@ below and in [[#index-defined-elsewhere]].
 
 # Enrollment # {#sctn-enrollment}
 
-To enroll a user for Secure Payment Confirmation, relying parties can use
-{{CredentialsContainer/create()|navigator.credentials.create()}}, with a
-{{AuthenticationExtensionsClientInputs/payment}} [=WebAuthn Extension=].
+To enroll a user for Secure Payment Confirmation, relying parties should call
+{{CredentialsContainer/create()|navigator.credentials.create()}}, with the
+{{AuthenticationExtensionsClientInputs/payment}} [=WebAuthn Extension=]
+specified.
 
-## Payment Extension - Enrollment ## {#sctn-payment-extension-enrollment}
+NOTE: We currently require an extension in order to allow credential creation
+      in an iframe and to allow the browser to cache SPC credentials in the
+      absence of [=WebAuthn Conditional UI=]. Future versions of this
+      specification may remove the requirement for the extension.
 
-:  Extension identifier
-:: `payment`
-
-:  Operation applicability
-:: [=registration extension|Registration=] and [=authentication extension|authentication=]
-
-:  Client extension input
-:: <xmp class="idl">
-    partial dictionary AuthenticationExtensionsClientInputs {
-      AuthenticationExtensionsPaymentInputs payment;
-    };
-
-    dictionary AuthenticationExtensionsPaymentInputs {
-      boolean isPayment;
-
-      // Only used for authentication.
-      USVString rpOrigin;
-      USVString topOrigin;
-      PaymentCurrencyAmount total;
-      PaymentCredentialInstrument instrument;
-    };
-    </xmp>
-
-    <dl dfn-type="dict-member" dfn-for="AuthenticationExtensionsPaymentInputs">
-      :  <dfn>isPayment</dfn> member
-      :: Indicates that the extension is active.
-
-        <div class="note">**TODO**: Find a better way to do this. Needed currently because other members are auth-time only.</div>
-
-      :  <dfn>rpOrigin</dfn> member
-      :: The [=Relying Party=] origin of the credential(s) being used. Only valid at authentication time.
-
-      :  <dfn>topOrigin</dfn> member
-      :: The origin of the top-level frame. Only valid at authentication time.
-
-      :  <dfn>total</dfn> member
-      :: The total amount the user is paying to the payee. Only valid at authentication time.
-
-      :  <dfn>instrument</dfn> member
-      :: The instrument details to be displayed to the user. Only valid at authentication time.
-
-    </dl>
-
-:  Client extension processing ([=registration extension|registration=])
-:: Note: Reading [[webauthn-3]] literally, these steps don't work; extensions
-    are injected at step 12 of `[[Create]]` and cannot really modify anything.
-    However other extensions ignore that entirely and assume they can modify any
-    part of any WebAuthn algorithm!
-
-    When [[webauthn-3#sctn-createCredential|creating a new credential]]:
-
-    1. Remove the check for *sameOriginWithAncestors* in step 2.
-
-         Note: This allows for creating SPC credentials in a cross-origin
-         iframe, as long as the correct permission policy is set
-         (see [[#sctn-permissions-policy]]). We could additionally require and
-         consume a [=transient activation=] here, if we felt the permission policy
-         is not sufficient.
-
-    2. In step 13, set the {{CollectedClientData/type}} to "`payment.create`".
-
-        <div class="note">**TODO**: Can we and/or should we rely on `getClientExtensionResults()` instead?</div>
-
-:  Client extension processing ([=authentication extension|authentication=])
-:: See [[#sctn-payment-extension-authentication]].
-
-    <div class="note">**TODO**: Reorder this spec to have this all inline.</div>
-
-:  Client extension output
-:: None
-
-:  Authenticator extension processing
-:: None
-
-# Payment Authentication # {#sctn-payment-authentication}
+# Authentication # {#sctn-authentication}
 
 To authenticate a payment via Secure Payment Confirmation, this specification
 defines a new [=payment method=], "[=secure-payment-confirmation=]". This
@@ -541,37 +472,120 @@ input {{SecurePaymentConfirmationRequest}} `request`, are:
 
 1. Return |outputCredential|.
 
-## Payment Extension - Authentication ## {#sctn-payment-extension-authentication}
+# WebAuthn Extension - "`payment`" # {#sctn-payment-extension-enrollment}
 
-This section defines the client extension processing steps for the
-[[#sctn-payment-extension-enrollment| payment extension]], for authentication.
+This [=client extension|client=] [=registration extension=] and
+[=authentication extension=] indicates that a credential is either being
+created for or used for Secure Payment Confirmation, respectively.
 
-When [[webauthn-3#sctn-getAssertion|making an assertion]]:
+For registration, this extension relaxes the WebAuthn requirements to allow
+credential creation in a cross-origin iframe, and also allows the browser to
+identify and cache Secure Payment Confirmation credentials. For authentication,
+this extension allows a third-party to perform an authentication ceremony on
+behalf of the [=Relying Party=], and also adds transaction information to the
+signed cryptogram.
 
-1. If not in a "[=secure-payment-confirmation=]" payment handler, return a "{{NotAllowedError}}" {{DOMException}}.
+Notably, a website should not call
+{{CredentialsContainer/get()|navigator.credentials.get()}} with this extension
+directly; for authentication the extension can only be accessed via
+{{PaymentRequest}} with a "[=secure-payment-confirmation=]" payment method.
 
-    NOTE: This guards against websites trying to access the extended powers of
-    SPC without going through the browser UX.
+:  Extension identifier
+:: `payment`
 
-1. During {{PublicKeyCredential/[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)}}:
+:  Operation applicability
+:: [=registration extension|Registration=] and [=authentication extension|authentication=]
 
-    1. Skip step 6.1, which compares *options.rpId* to *effectiveDomain*
+:  Client extension input
+:: <xmp class="idl">
+    partial dictionary AuthenticationExtensionsClientInputs {
+      AuthenticationExtensionsPaymentInputs payment;
+    };
 
-        Note: This enables cross-domain authentication ceremonies; see [[#sctn-use-case-merchant-authentication]].
+    dictionary AuthenticationExtensionsPaymentInputs {
+      boolean isPayment;
 
-    1. In step 9, instead of creating a {{CollectedClientData}}, instead create a {{CollectedClientPaymentData}} with:
+      // Only used for authentication.
+      USVString rpOrigin;
+      USVString topOrigin;
+      PaymentCurrencyAmount total;
+      PaymentCredentialInstrument instrument;
+    };
+    </xmp>
 
-        1. `type` set to "`payment.get"`
-        1. `payment` set to a new {{CollectedClientAdditionalPaymentData}} with:
+    <dl dfn-type="dict-member" dfn-for="AuthenticationExtensionsPaymentInputs">
+      :  <dfn>isPayment</dfn> member
+      :: Indicates that the extension is active.
 
-            1. `rpOrigin` set to {{AuthenticationExtensionsPaymentInputs/rpOrigin}}.
-            1. `topOrigin` set to {{AuthenticationExtensionsPaymentInputs/topOrigin}}.
-            1. `total` set to {{AuthenticationExtensionsPaymentInputs/total}}.
-            1. `instrument` set {{AuthenticationExtensionsPaymentInputs/instrument}}.
+        <div class="note">**TODO**: Find a better way to do this. Needed currently because other members are auth-time only.</div>
 
-        1. All other members set as per the original step 9.
+      :  <dfn>rpOrigin</dfn> member
+      :: The [=Relying Party=] origin of the credential(s) being used. Only valid at authentication time.
 
-### <dfn dictionary>CollectedClientPaymentData</dfn> Dictionary ### {#sctn-collectedclientpaymentdata-dictionary}
+      :  <dfn>topOrigin</dfn> member
+      :: The origin of the top-level frame. Only valid at authentication time.
+
+      :  <dfn>total</dfn> member
+      :: The total amount the user is paying to the payee. Only valid at authentication time.
+
+      :  <dfn>instrument</dfn> member
+      :: The instrument details to be displayed to the user. Only valid at authentication time.
+
+    </dl>
+
+:  Client extension processing ([=registration extension|registration=])
+:: Note: Reading [[webauthn-3]] literally, these steps don't work; extensions
+    are injected at step 12 of `[[Create]]` and cannot really modify anything.
+    However other extensions ignore that entirely and assume they can modify any
+    part of any WebAuthn algorithm!
+
+    When [[webauthn-3#sctn-createCredential|creating a new credential]]:
+
+    1. Remove the check for *sameOriginWithAncestors* in step 2.
+
+         Note: This allows for creating SPC credentials in a cross-origin
+         iframe, as long as the correct permission policy is set
+         (see [[#sctn-permissions-policy]]). We could additionally require and
+         consume a [=transient activation=] here, if we felt the permission policy
+         is not sufficient.
+
+    2. In step 13, set the {{CollectedClientData/type}} to "`payment.create`".
+
+        <div class="note">**TODO**: Can we and/or should we rely on `getClientExtensionResults()` instead?</div>
+
+:  Client extension processing ([=authentication extension|authentication=])
+:: When [[webauthn-3#sctn-getAssertion|making an assertion]]:
+
+    1. If not in a "[=secure-payment-confirmation=]" payment handler, return a "{{NotAllowedError}}" {{DOMException}}.
+
+        NOTE: This guards against websites trying to access the extended powers of
+        SPC without going through the browser UX.
+
+    1. During {{PublicKeyCredential/[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)}}:
+
+        1. Skip step 6.1, which compares *options.rpId* to *effectiveDomain*
+
+            Note: This enables cross-domain authentication ceremonies; see [[#sctn-use-case-merchant-authentication]].
+
+        1. In step 9, instead of creating a {{CollectedClientData}}, instead create a {{CollectedClientPaymentData}} with:
+
+            1. `type` set to "`payment.get"`
+            1. `payment` set to a new {{CollectedClientAdditionalPaymentData}} with:
+
+                1. `rpOrigin` set to {{AuthenticationExtensionsPaymentInputs/rpOrigin}}.
+                1. `topOrigin` set to {{AuthenticationExtensionsPaymentInputs/topOrigin}}.
+                1. `total` set to {{AuthenticationExtensionsPaymentInputs/total}}.
+                1. `instrument` set {{AuthenticationExtensionsPaymentInputs/instrument}}.
+
+            1. All other members set as per the original step 9.
+
+:  Client extension output
+:: None
+
+:  Authenticator extension processing
+:: None
+
+## <dfn dictionary>CollectedClientPaymentData</dfn> Dictionary ## {#sctn-collectedclientpaymentdata-dictionary}
 
 <xmp class="idl">
     dictionary CollectedClientPaymentData : CollectedClientData {
@@ -587,7 +601,7 @@ The {{CollectedClientPaymentData}} dictionary inherits from
     :: The additional payment information to sign.
 </dl>
 
-### <dfn dictionary>CollectedClientAdditionalPaymentData</dfn> Dictionary ### {#sctn-collectedclientadditionalpaymentdata-dictionary}
+## <dfn dictionary>CollectedClientAdditionalPaymentData</dfn> Dictionary ## {#sctn-collectedclientadditionalpaymentdata-dictionary}
 
 <xmp class="idl">
     dictionary CollectedClientAdditionalPaymentData {
@@ -616,13 +630,14 @@ fields:
 </dl>
 
 Note that there is no `paymentRequestOrigin` field in
-{{CollectedClientAdditionalPaymentData}}, because the origin of the iframe is
-already included in {{CollectedClientData}} of [[webauthn-3]].
+{{CollectedClientAdditionalPaymentData}}, because the origin of the calling
+frame is already included in {{CollectedClientData}} of [[webauthn-3]].
+
+
 
 # Common Data Structure # {#sctn-common-data-structures}
 
-The following data structure is shared between enrollment and payment
-authentication.
+The following data structure is shared between enrollment and authentication.
 
 ## <dfn dictionary>PaymentCredentialInstrument</dfn> Dictionary ## {#sctn-paymentcredentialinstrument-dictionary}
 
@@ -648,8 +663,11 @@ contains the following members:
 # Permissions Policy integration # {#sctn-permissions-policy}
 
 This specification uses the "[=payment permission string|payment=]"
-policy-identifier string from [[payment-request]] to control access to both
-enrollment and authentication.
+policy-identifier string from [[payment-request]] to control access to **both**
+enrollment and authentication. This extends the
+[[webauthn-3#sctn-permissions-policy|WebAuthn Permission Policy]].
+
+Note: Algorithms specified in [[!CREDENTIAL-MANAGEMENT-1]] perform the actual permissions policy evaluation. This is because such policy evaluation needs to occur when there is access to the [=current settings object=]. The {{PublicKeyCredential/[[Create]](origin, options, sameOriginWithAncestors)}} and {{PublicKeyCredential/[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)}} [=internal methods=] do not have such access since they are invoked [=in parallel=] (by algorithms specified in [[!CREDENTIAL-MANAGEMENT-1]]).
 
 # Security Considerations # {#sctn-security-considerations}
 
