@@ -353,7 +353,7 @@ To enroll a user for Secure Payment Confirmation, relying parties can use
       :  <dfn>isPayment</dfn> member
       :: Indicates that the extension is active.
 
-        <div class="note">**TODO**: Find a better way to do this. Needed currently because `displayName` and `icon` are auth-time only.</div>
+        <div class="note">**TODO**: Find a better way to do this. Needed currently because other members are auth-time only.</div>
 
       :  <dfn>rpOrigin</dfn> member
       :: The [=Relying Party=] origin of the credential(s) being used. Only valid at authentication time.
@@ -372,18 +372,18 @@ To enroll a user for Secure Payment Confirmation, relying parties can use
 :  Client extension processing ([=registration extension|registration=])
 :: Note: Reading [[webauthn-3]] literally, these steps don't work; extensions
     are injected at step 12 of `[[Create]]` and cannot really modify anything.
-    However other extensions seem to ignore that entirely and assume they can
-    just modify any part of any WebAuthn algorithm!
+    However other extensions ignore that entirely and assume they can modify any
+    part of any WebAuthn algorithm!
 
     When [[webauthn-3#sctn-createCredential|creating a new credential]]:
 
     1. Remove the check for *sameOriginWithAncestors* in step 2.
 
-       Note: This allows for creating SPC credentials in a cross-origin
-       iframe, as long as the correct permission policy is set
-       (see [[#sctn-permissions-policy]]). We could additionally require and
-       consume a [=transient activation=] here, if we felt the permission policy
-       is not sufficient.
+         Note: This allows for creating SPC credentials in a cross-origin
+         iframe, as long as the correct permission policy is set
+         (see [[#sctn-permissions-policy]]). We could additionally require and
+         consume a [=transient activation=] here, if we felt the permission policy
+         is not sufficient.
 
     2. In step 13, set the {{CollectedClientData/type}} to "`payment.create`".
 
@@ -444,20 +444,20 @@ The [=standardized payment method identifier=] for this specification is
 The {{SecurePaymentConfirmationRequest}} dictionary contains the following
 members:
 
-<dl dfn-type="attribute" dfn-for="SecurePaymentConfirmationRequest">
-    :  challenge member
+<dl dfn-type="dict-member" dfn-for="SecurePaymentConfirmationRequest">
+    :  <dfn>challenge</dfn> member
     :: A random one-time challenge that the relying party generates on the server side to prevent replay attacks.
 
-    :  credentialIds member
+    :  <dfn>credentialIds</dfn> member
     :: The list of credential identifiers for the given instrument.
 
-    :  instrument member
+    :  <dfn>instrument</dfn> member
     :: The description of the instrument name and icon to display during enrollment and to be signed along with the transaction details.
 
-    :  timeout member
+    :  <dfn>timeout</dfn> member
     :: The number of milliseconds before the request to sign the transaction details times out. At most 1 hour.
 
-    :  extensions member
+    :  <dfn>extensions</dfn> member
     :: Any [=WebAuthn extensions=] that should be used for the passed credential(s). The caller does not need to specify the [[#sctn-payment-extension-enrollment| payment extension]]; it is added automatically.
 </dl>
 
@@ -582,8 +582,8 @@ When [[webauthn-3#sctn-getAssertion|making an assertion]]:
 The {{CollectedClientPaymentData}} dictionary inherits from
 {{CollectedClientData}}. It contains the following additional field:
 
-<dl dfn-type="attribute" dfn-for="CollectedClientPaymentData">
-    :  payment member
+<dl dfn-type="dict-member" dfn-for="CollectedClientPaymentData">
+    :  <dfn>payment</dfn> member
     :: The additional payment information to sign.
 </dl>
 
@@ -601,17 +601,17 @@ The {{CollectedClientPaymentData}} dictionary inherits from
 The {{CollectedClientAdditionalPaymentData}} dictionary contains the following
 fields:
 
-<dl dfn-type="attribute" dfn-for="CollectedClientAdditionalPaymentData">
-    :  rp member
+<dl dfn-type="dict-member" dfn-for="CollectedClientAdditionalPaymentData">
+    :  <dfn>rp</dfn> member
     :: The relying party that created the credential.
 
-    :  topOrigin member
+    :  <dfn>topOrigin</dfn> member
     :: The origin of the top level context that requested to sign the transaction details. Typically this would be called a merchant.
 
-    :  total member
+    :  <dfn>total</dfn> member
     :: The {{PaymentCurrencyAmount}} of the [[payment-request]] `total` field.
 
-    :  instrument member
+    :  <dfn>instrument</dfn> member
     :: The instrument information that was displayed to the user.
 </dl>
 
@@ -637,11 +637,11 @@ The {{PaymentCredentialInstrument}} dictionary contains the information to be
 displayed to the user and signed together with the transaction details. It
 contains the following members:
 
-<dl dfn-type="attribute" dfn-for="PaymentCredentialInstrument">
-    :  displayName member
+<dl dfn-type="dict-member" dfn-for="PaymentCredentialInstrument">
+    :  <dfn>displayName</dfn> member
     :: The name of the payment instrument to be displayed to the user.
 
-    :  icon member
+    :  <dfn>icon</dfn> member
     :: The URL of the icon of the payment instrument.
 </dl>
 
