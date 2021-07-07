@@ -79,22 +79,47 @@ allow the API to be called in payment contexts.
 The below use case scenarios illustrate the need for a payment-specific
 extension to [[webauthn-3]], rather than just asking web developers to build
 their own flows on-top of [[webauthn-3]] registration and authentication.
+We presume that the general use case of cryptographic-based authentication for
+online transactions is well established.
 
 Note: These sections are still a WIP.
 
 ### Verifying an authenticated payment ### {#sctn-use-case-verifying-payment}
 
-* A default WebAuthn challenge would require all payment-specific information
-    to go in the `challenge` field.
-* There is no specification for this, so banks may do it differently from each
-    other, which then causes confusion.
-* Regulations may require that the user was shown the transaction amount; if
-    the merchant is just using normal webauthn then the bank has no way to
-    verify that. SPC lets them trust the WebAuthn client (the browser) to
-    display this, no matter who the merchant is.
+A user is performing an online transaction based on cryptographic
+authentication (i.e. either WebAuthn or this specification). The user completes
+the authentication and the issuing bank now wishes to verify the signed
+cryptogram that they received.
 
-    * Because the transaction info is signed in the CollectedClientData, the
-        bank knows that SPC was used, so the information was shown in browser UX.
+If the bank or merchant site is using WebAuthn, the payment-specific
+information must be placed in the WebAuthn
+{{PublicKeyCredentialRequestOptions/challenge}}. This has several issues:
+
+1. It is a misuse of the `challenge` field (which is intended to defeat replay
+    attacks).
+1. There is no specification for this, so each issuing bank may come up with
+    their own format for how payment information should be formatted and encoded
+    in the challenge - which causes fragmentation and confusion.
+1. Regulations may require that the user was shown the transaction amount.
+    The `challenge` field cannot be used to verify that, as information included
+    there has no behavior impact on WebAuthn.
+
+Secure Payment Confirmation, on the other hand:
+
+1. Uses the `challenge` field only to defeat replay attacks, as with normal
+    WebAuthn.
+1. Provides a specified format for transaction data, which will e.g. allow
+    generic verification code and test suites to be developed and shared as
+    appropriate.
+1. Guarantees that the user agent has presented the transaction information to
+    the user, in a way that a malicious website (or maliciously introduced
+    JavaScript code on a trusted website) cannot bypass.
+
+    * The transaction information is included in the {{CollectedClientData}}
+        dictionary, which is not influencable by JavaScript code.
+
+    NOTE: This does assume the issuing bank trusts the user agent, but that
+    is already required in payment flows today.
 
 ### Registration in a bank iframe ### {#sctn-use-case-iframe-registration}
 
@@ -126,8 +151,8 @@ Note: These sections are still a WIP.
 ## Sample API Usage Scenarios ## {#sctn-sample-scenarios}
 
 In this section, we walk through some scenarios for Secure Payment Confirmation
-and the corresponding sample code for using this API. Note that this is an
-example flow and does not limit the scope of how the API can be used.
+and the corresponding sample code for using this API. Note that these are
+example flows and do not limit the scope of how the API can be used.
 
 ### Enrollment ### {#sctn-sample-enrollment}
 
