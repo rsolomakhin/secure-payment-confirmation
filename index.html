@@ -338,7 +338,7 @@ c-[il] { color: #000000 } /* Literal.Number.Integer.Long */
       <li><a href="#sctn-collectedclientadditionalpaymentdata-dictionary"><span class="secno">5.2</span> <span class="content"><span><code>CollectedClientAdditionalPaymentData</code></span> Dictionary</span></a>
      </ol>
     <li>
-     <a href="#sctn-common-data-structures"><span class="secno">6</span> <span class="content">Common Data Structure</span></a>
+     <a href="#sctn-common-data-structures"><span class="secno">6</span> <span class="content">Common Data Structures</span></a>
      <ol class="toc">
       <li><a href="#sctn-paymentcredentialinstrument-dictionary"><span class="secno">6.1</span> <span class="content"><span><code>PaymentCredentialInstrument</code></span> Dictionary</span></a>
      </ol>
@@ -538,7 +538,7 @@ Payment Confirmation.</p>
      <p>The user visits <code>merchant.com</code>, selects an item to purchase, and proceeds
 to the checkout flow. They enter their payment instrument details, and
 indicate that they wish to pay (e.g. by pressing a "Pay" button).</p>
-     <p class="note" role="note"><span>NOTE:</span> This may or may not be the merchant website the user was originally
+     <p class="note" role="note"><span>Note:</span> This may or may not be the merchant website the user was originally
       on when they registered this device; it is irrelevant here.</p>
     <li data-md>
      <p>The merchant communicates with the issuing bank of the payment instrument
@@ -620,7 +620,7 @@ authentication.</p>
    </dl>
    <h2 class="heading settled" data-level="3" id="sctn-enrollment"><span class="secno">3. </span><span class="content">Enrollment</span><a class="self-link" href="#sctn-enrollment"></a></h2>
    <p>To enroll a user for Secure Payment Confirmation, relying parties should call <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credentialscontainer-create" id="ref-for-dom-credentialscontainer-create">navigator.credentials.create()</a></code>, with the <code class="idl"><a data-link-type="idl" href="#dom-authenticationextensionsclientinputs-payment" id="ref-for-dom-authenticationextensionsclientinputs-payment">payment</a></code> <a data-link-type="dfn" href="https://w3c.github.io/webauthn/#webauthn-extensions" id="ref-for-webauthn-extensions①">WebAuthn Extension</a> specified.</p>
-   <p class="note" role="note"><span>NOTE:</span> We currently require an extension in order to allow credential creation
+   <p class="note" role="note"><span>Note:</span> We currently require an extension in order to allow credential creation
       in an iframe and to allow the browser to cache SPC credentials in the
       absence of <a data-link-type="dfn" href="#webauthn-conditional-ui" id="ref-for-webauthn-conditional-ui">WebAuthn Conditional UI</a>. Future versions of this
       specification may remove the requirement for the extension.</p>
@@ -747,7 +747,7 @@ and whose other members are set from <code>request.extensions</code>.</p>
      </ol>
     <li data-md>
      <p>Let <var>outputCredential</var> be the result of calling <code><a data-link-type="idl" href="https://w3c.github.io/webappsec-credential-management/#dom-credentialscontainer-get" id="ref-for-dom-credentialscontainer-get">navigator.credentials.get({publicKey})</a></code>.</p>
-     <p class="note" role="note"><span>NOTE:</span> This triggers <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a>'s <a href="https://www.w3.org/TR/webauthn-3/#sctn-getAssertion">Get</a> behavior</p>
+     <p class="note" role="note"><span>Note:</span> This triggers <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a>'s <a href="https://www.w3.org/TR/webauthn-3/#sctn-getAssertion">Get</a> behavior</p>
     <li data-md>
      <p>Return <var>outputCredential</var>.</p>
    </ol>
@@ -828,7 +828,7 @@ part of any WebAuthn algorithm!</p>
      <ol>
       <li data-md>
        <p>If not in a "<a data-link-type="dfn" href="#secure-payment-confirmation" id="ref-for-secure-payment-confirmation③">secure-payment-confirmation</a>" payment handler, return a "<code class="idl"><a data-link-type="idl" href="https://heycam.github.io/webidl/#notallowederror" id="ref-for-notallowederror">NotAllowedError</a></code>" <code class="idl"><a data-link-type="idl" href="https://heycam.github.io/webidl/#idl-DOMException" id="ref-for-idl-DOMException">DOMException</a></code>.</p>
-       <p class="note" role="note"><span>NOTE:</span> This guards against websites trying to access the extended powers of
+       <p class="note" role="note"><span>Note:</span> This guards against websites trying to access the extended powers of
 SPC without going through the browser UX.</p>
       <li data-md>
        <p>During <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dom-publickeycredential-discoverfromexternalsource-slot" id="ref-for-dom-publickeycredential-discoverfromexternalsource-slot">[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)</a></code>:</p>
@@ -902,8 +902,8 @@ fields:</p>
    </dl>
    <p>Note that there is no <code>paymentRequestOrigin</code> field in <code class="idl"><a data-link-type="idl" href="#dictdef-collectedclientadditionalpaymentdata" id="ref-for-dictdef-collectedclientadditionalpaymentdata⑤">CollectedClientAdditionalPaymentData</a></code>, because the origin of the calling
 frame is already included in <code class="idl"><a data-link-type="idl" href="https://w3c.github.io/webauthn/#dictdef-collectedclientdata" id="ref-for-dictdef-collectedclientdata③">CollectedClientData</a></code> of <a data-link-type="biblio" href="#biblio-webauthn-3">[webauthn-3]</a>.</p>
-   <h2 class="heading settled" data-level="6" id="sctn-common-data-structures"><span class="secno">6. </span><span class="content">Common Data Structure</span><a class="self-link" href="#sctn-common-data-structures"></a></h2>
-   <p>The following data structure is shared between enrollment and authentication.</p>
+   <h2 class="heading settled" data-level="6" id="sctn-common-data-structures"><span class="secno">6. </span><span class="content">Common Data Structures</span><a class="self-link" href="#sctn-common-data-structures"></a></h2>
+   <p>The following data structures are shared between enrollment and authentication.</p>
    <h3 class="heading settled" data-level="6.1" id="sctn-paymentcredentialinstrument-dictionary"><span class="secno">6.1. </span><span class="content"><dfn class="dfn-paneled idl-code" data-dfn-type="dictionary" data-export id="dictdef-paymentcredentialinstrument"><code>PaymentCredentialInstrument</code></dfn> Dictionary</span><a class="self-link" href="#sctn-paymentcredentialinstrument-dictionary"></a></h3>
 <pre class="idl highlight def"><c- b>dictionary</c-> <a class="idl-code" data-link-type="dictionary" href="#dictdef-paymentcredentialinstrument" id="ref-for-dictdef-paymentcredentialinstrument⑥"><c- g>PaymentCredentialInstrument</c-></a> {
     <c- b>required</c-> <a class="idl-code" data-link-type="interface" href="https://heycam.github.io/webidl/#idl-DOMString" id="ref-for-idl-DOMString"><c- b>DOMString</c-></a> <a class="idl-code" data-link-type="dict-member" data-type="DOMString " href="#dom-paymentcredentialinstrument-displayname" id="ref-for-dom-paymentcredentialinstrument-displayname"><c- g>displayName</c-></a>;
@@ -999,7 +999,7 @@ very clear payments UX when a match is found (though that may be too late).</p>
      </ul>
    </ul>
    <h2 class="heading settled" data-level="10" id="sctn-accessibility-considerations"><span class="secno">10. </span><span class="content">Accessibility Considerations</span><a class="self-link" href="#sctn-accessibility-considerations"></a></h2>
-   <p>User Agents implementing this specification should follow both <a href="https://www.w3.org/TR/webauthn-3/#accessibility-considerations">WebAuthn’s Accessibility Considerations</a> and [[payment-request#accessibility-considerations|PaymentRequest’s Accessibility Considerations]].</p>
+   <p>User Agents implementing this specification should follow both <a href="https://www.w3.org/TR/webauthn-3/#accessibility-considerations">WebAuthn’s Accessibility Considerations</a> and <a data-link-type="dfn" href="https://w3c.github.io/payment-request/#accessibility-considerations" id="ref-for-accessibility-considerations">PaymentRequest’s Accessibility Considerations</a>.</p>
    <p id="back-to-top" role="navigation"><a href="#toc"><abbr title="Back to Top">↑</abbr></a></p>
 <script src="https://www.w3.org/scripts/TR/2016/fixup.js"></script>
   </main>
@@ -1123,6 +1123,12 @@ very clear payments UX when a match is found (though that may be too late).</p>
    <ul>
     <li><a href="#ref-for-dfn-payment-permission">1.2.1. Enrollment</a>
     <li><a href="#ref-for-dfn-payment-permission①">7. Permissions Policy integration</a>
+   </ul>
+  </aside>
+  <aside class="dfn-panel" data-for="term-for-accessibility-considerations">
+   <a href="https://w3c.github.io/payment-request/#accessibility-considerations">https://w3c.github.io/payment-request/#accessibility-considerations</a><b>Referenced in:</b>
+   <ul>
+    <li><a href="#ref-for-accessibility-considerations">10. Accessibility Considerations</a>
    </ul>
   </aside>
   <aside class="dfn-panel" data-for="term-for-dfn-steps-to-check-if-a-payment-can-be-made">
@@ -1325,6 +1331,7 @@ very clear payments UX when a match is found (though that may be too late).</p>
      <li><span class="dfn-paneled" id="term-for-dom-paymentrequest-constructor">constructor</span>
      <li><span class="dfn-paneled" id="term-for-dfn-payment-method">payment method</span>
      <li><span class="dfn-paneled" id="term-for-dfn-payment-permission">payment permission string</span>
+     <li><span class="dfn-paneled" id="term-for-accessibility-considerations">payment request accessibility considerations</span>
      <li><span class="dfn-paneled" id="term-for-dfn-steps-to-check-if-a-payment-can-be-made">steps to check if a payment can be made</span>
      <li><span class="dfn-paneled" id="term-for-dfn-steps-to-respond-to-a-payment-request">steps to respond to a payment request</span>
     </ul>
