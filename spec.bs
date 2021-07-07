@@ -35,6 +35,7 @@ spec: payment-request; urlPrefix: https://w3c.github.io/payment-request/
         text: steps to check if a payment can be made; url: dfn-steps-to-check-if-a-payment-can-be-made
         text: steps to respond to a payment request; url: dfn-steps-to-respond-to-a-payment-request
         text: payment permission string; url: dfn-payment-permission
+        text: payment request accessibility considerations; url: accessibility-considerations
 
 spec: web-authn; urlPrefix: https://w3c.github.io/webauthn/
     type: dfn
@@ -234,7 +235,7 @@ Payment Confirmation.
     to the checkout flow. They enter their payment instrument details, and
     indicate that they wish to pay (e.g. by pressing a "Pay" button).
 
-    NOTE: This may or may not be the merchant website the user was originally
+    Note: This may or may not be the merchant website the user was originally
           on when they registered this device; it is irrelevant here.
 
 1. The merchant communicates with the issuing bank of the payment instrument
@@ -326,7 +327,7 @@ To enroll a user for Secure Payment Confirmation, relying parties should call
 {{AuthenticationExtensionsClientInputs/payment}} [=WebAuthn Extension=]
 specified.
 
-NOTE: We currently require an extension in order to allow credential creation
+Note: We currently require an extension in order to allow credential creation
       in an iframe and to allow the browser to cache SPC credentials in the
       absence of [=WebAuthn Conditional UI=]. Future versions of this
       specification may remove the requirement for the extension.
@@ -468,7 +469,7 @@ input {{SecurePaymentConfirmationRequest}} `request`, are:
 
 1. Let |outputCredential| be the result of calling <code><a idl for="CredentialsContainer" lt="get()">navigator.credentials.get({publicKey})</a></code>.
 
-    NOTE: This triggers [[webauthn-3]]'s [[webauthn-3#sctn-getAssertion|Get]] behavior
+    Note: This triggers [[webauthn-3]]'s [[webauthn-3#sctn-getAssertion|Get]] behavior
 
 1. Return |outputCredential|.
 
@@ -558,7 +559,7 @@ directly; for authentication the extension can only be accessed via
 
     1. If not in a "[=secure-payment-confirmation=]" payment handler, return a "{{NotAllowedError}}" {{DOMException}}.
 
-        NOTE: This guards against websites trying to access the extended powers of
+        Note: This guards against websites trying to access the extended powers of
         SPC without going through the browser UX.
 
     1. During {{PublicKeyCredential/[[DiscoverFromExternalSource]](origin, options, sameOriginWithAncestors)}}:
@@ -635,9 +636,9 @@ frame is already included in {{CollectedClientData}} of [[webauthn-3]].
 
 
 
-# Common Data Structure # {#sctn-common-data-structures}
+# Common Data Structures # {#sctn-common-data-structures}
 
-The following data structure is shared between enrollment and authentication.
+The following data structures are shared between enrollment and authentication.
 
 ## <dfn dictionary>PaymentCredentialInstrument</dfn> Dictionary ## {#sctn-paymentcredentialinstrument-dictionary}
 
@@ -739,6 +740,6 @@ that model in significant ways that should be considered.
 
 User Agents implementing this specification should follow both
 [[webauthn-3#accessibility-considerations|WebAuthn's Accessibility Considerations]]
-and \[[payment-request#accessibility-considerations|PaymentRequest's Accessibility Considerations]].
+and [=payment request accessibility considerations|PaymentRequest's Accessibility Considerations=].
 
 </div>
